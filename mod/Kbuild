@@ -1,0 +1,17 @@
+ccflags-y := -I$(src)/../include
+#EXTRA_CFLAGS += -DDEBUG
+
+
+obj-m += appflid.o
+
+appflid-objs += nf_hook.o
+appflid-objs += config.o
+appflid-objs += core.o
+appflid-objs += regexp.o
+appflid-objs += read_confile.o
+appflid-objs += ndinfo.o
+appflid-objs += wellkn_port.o
+appflid-objs += pattern.o
+appflid-objs += nl_kcmd.o
+appflid-objs += kfile.o
+
