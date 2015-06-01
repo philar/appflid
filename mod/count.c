@@ -38,8 +38,21 @@ int count_inactive(struct nf_conn *ct)
 	
 }
 
-static void count_add(struct nf_conn *ct ,struct app_counter *app_cnt){
-	struct  
+static int count_add(struct nf_conn *ct ,struct app_counter *app_cnt)
+{
+	struct nf_conn_acct *acct;
+	const struct nf_conn_counter *counters;
+ 
+        acct = nf_conn_acct_find(ct);
+        if (!acct)
+                return -1;
+        counters = acct->counter;
+
+        atomic64_add(atomic64_read(&counters[IP_CT_DIR_ORIGINAL].packets),&app_cnt->packets[IP_CT_DIR_ORIGINAL]);
+        atomic64_add(atomic64_read(&counters[IP_CT_DIR_REPLY].packets),&app_cnt->packets[IP_CT_DIR_REPLY]);
+        atomic64_add(atomic64_read(&counters[IP_CT_DIR_ORIGINAL].bytes),&app_cnt->bytes[IP_CT_DIR_ORIGINAL]);
+        atomic64_add(atomic64_read(&counters[IP_CT_DIR_REPLY].bytes),&app_cnt->bytes[IP_CT_DIR_REPLY]);
+	return 0;
 }
 
 int count_active(struct net *net)
@@ -56,15 +69,38 @@ int count_active(struct net *net)
 		hlist_nulls_for_each_entry_rcu(h, n, &net->ct.hash[bucket], hnnode) {
 			ct = nf_ct_tuplehash_to_ctrack(h)
 			if(ct && (app_cnt = count_strcmp(ct->appflid.app_proto,active)))
-				count_add(ct,app_cnt);
+				if (count_add(ct,app_cnt)) {
+					rcu_read_unlock();
+					return -1;	
+				}	
+	
 		}			
 	}
 	rcu_read_unlock();
+	return 0;
 }
 
-int count_total(void)
+int count_total(struct net *net,char *buf,size_t buf_len)
 {
+	int i;
+	size_t per_len;
 
+	count_active(net);
+
+	memset(buf,0,buf_len);
+	for (i = 0; i < count_index; i++) {
+		sprintf(buf,"%s%s packets %ld/up %ld/down,bytes %ld/up %ld/down"
+			buf,active[i].proto,
+		atomic64_read(&active[i].packets[IP_CT_DIR_ORIGINAL])+atomic64_read(&inactive[i].packets[IP_CT_DIR_ORIGINAL]),
+		atomic64_read(&active[i].packets[IP_CT_DIR_REPLY])+atomic64_read(&inactive[i].packets[IP_CT_DIR_REPLY]),
+		atomic64_read(&active[i].bytes[IP_CT_DIR_ORIGINAL])+atomic64_read(&inactive[i].bytes[IP_CT_DIR_ORIGINAL]),
+		atomic64_read(&active[i].bytes[IP_CT_DIR_REPLY])+atomic64_read(&inactive[i].bytes[IP_CT_DIR_REPLY]));
+		if(i==0)
+			per_len = strlen(buf);
+		if(buf_len - strlen(buf) < per_len + 1)
+			return -1;
+	}
+	return 0;
 }
 
 
