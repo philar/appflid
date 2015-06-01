@@ -14,8 +14,8 @@ struct app_counter{
 };
 
 
-int  nf_ct_appflid_count(struct net *net,struct app_counter *app_cnt);
-int  count_add_proto(const char *proto);
+int  count_active(struct net *net);
+int  count_add_proto(const char *app_proto);
 int count_init(void);
 void count_destroy(void);
 #endif
