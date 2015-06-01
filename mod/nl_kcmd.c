@@ -8,6 +8,7 @@
 #include "appflid/comm/types.h"
 #include "appflid/mod/nl_kcmd.h"
 #include "appflid/mod/ndinfo.h"
+#include "appflid/mod/count.h"
 
 struct sock *nl_sk=NULL;
 static DEFINE_MUTEX(nl_mtx);
@@ -36,7 +37,7 @@ static int  nl_send_to_user(int pid,char *data,int data_len){
                      NLM_F_MULTI); /* flags. */
 
 	NETLINK_CB(skb).dst_group = 0; /* not in mcast group */
-    NETLINK_CB(skb).pid = 0;      /* from kernel */
+    NETLINK_CB(skb).portid = 0;      /* from kernel */
 //    NETLINK_CB(skb).portid = 0;      /* from kernel */
     memcpy(nlmsg_data(nl_hdr),data,data_len);
     res= netlink_unicast(nl_sk, skb, pid, MSG_DONTWAIT);
@@ -54,30 +55,22 @@ static int nl_rcv_msg(struct sk_buff *skb){
 	struct arguments *args; 
 	char buf[MAX_PAYLOAD]={};
 	int i;
+//	struct net *net = sock_net(skb->sk);
 
-	struct count_t{
-		char app_name[APPNAMSIZ];
-		long up;
-		long down;
-	};
 
-	struct count_t count[4]={
-		{"http",0,0},
-		{"qq",0,0},
-		{"mobileqq",0,0},
-		{"unknown",0,0},
-	};
 	nlh = nlmsg_hdr(skb);
 	log_debug("nl_rcv_msg ,pid:%d",nlh->nlmsg_pid);
 	args=(struct arguments *)NLMSG_DATA(nlh);
 	switch(args->key){
 	case ARGP_ALL:
-		for(i=0;i<4;i++){
-			ndinfo_count(count[i].app_name,&count[i].up,&count[i].down);
-			sprintf(buf,"%s%s %ld/up %ld/down\n",buf,count[i].app_name,count[i].up,count[i].down);
+		for(i=0;i<5;i++){
+	/*		nf_ct_appflid_count(net,&app_cnt[i]);
+		sprintf(buf,"%s%s packets %lld/up %lld/down  bytes %lld/up %lld/down\n",
+				 buf,app_cnt[i].app_proto,app_cnt[i].packets[0],app_cnt[i].packets[1],
+				 app_cnt[i].bytes[0],app_cnt[i].bytes[1]);*/
 		}
 		nl_send_to_user(nlh->nlmsg_pid,buf,strlen(buf));
-        break;
+	break;
 	case ARGP_HTTP:
 /*		ndinfo_count("http",&up,&down);
 		sprintf(buf,"http %ldG/up %ldG/down\n",up>>30,down>>30);

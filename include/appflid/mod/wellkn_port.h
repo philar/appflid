@@ -5,11 +5,11 @@
 struct wellkn_port_entry{
 	struct rb_node tree_hook;
 	__u16 port;
-	char app_name[APPNAMSIZ];
+	char app_proto[APPNAMSIZ];
 };
 struct wellkn_port_table{
 	    struct rb_root tree;
-	    long  count;
+	    unsigned int  count;
 };
 
 int wellkn_port_add(const __u16 port,const char * app_name);

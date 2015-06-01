@@ -1,124 +1,251 @@
 #include <linux/ip.h>
+#include <linux/ctype.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
+#include <linux/skbuff.h>
+#include <linux/netfilter.h>
+#include <net/netfilter/nf_conntrack.h>
+#include <net/netfilter/nf_conntrack_core.h>
+
+
 
 #include "appflid/comm/types.h"
 #include "appflid/comm/constants.h"
+#include "appflid/comm/print.h"
 #include "appflid/mod/config.h"
 #include "appflid/mod/ndinfo.h"
 #include "appflid/mod/wellkn_port.h"
 #include "appflid/mod/pattern.h"
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35)
+#else
+#include <net/netfilter/nf_conntrack_extend.h>
+#include <net/netfilter/nf_conntrack_acct.h>
+#endif
 
-static int get_skb_payload(struct sk_buff * skb,char **payload){
+static int num_packets = 10;
+static int maxdatalen = 2048;
+static int total_match=0;
 
-	struct iphdr *iphdr = ip_hdr(skb);
-	int total_len = iphdr->tot_len;
 
-	total_len -= iphdr->ihl*4;
-
-	if(iphdr->protocol==IPPROTO_UDP){
-		*payload = (char *)udp_hdr(skb) + 8 ;/*the len of  udphdr is 8 */
-		total_len -= 8; 
-	}else if(iphdr->protocol==IPPROTO_TCP){
-		*payload = (char *)tcp_hdr(skb) + tcp_hdr(skb)->doff * 4 ;
-		total_len -= tcp_hdr(skb)->doff*4;
-	}
-	return total_len;
-
-}
-/*get key ,find ndinfo and update ndinfo ,may be it should be more functions ,
- * but I do not find a perfect way to handle them
- * */
-static int  preprocess_ndinfo(int dir,struct ndinfo_key *key,struct iphdr *iphdr){
-	struct ndinfo_entry *ndinfo = NULL;
-	char *layer4ptr = NULL;
-	__u16 tmp_port;
-	int find = 0;
-
-	layer4ptr = (char *)iphdr+iphdr->ihl*4;
-	if(dir==DOWN){
-		key->addr.s_addr = iphdr->saddr;
-		memcpy(&tmp_port,layer4ptr,sizeof(tmp_port));
-	}else {
-		key->addr.s_addr = iphdr->daddr;
-		memcpy(&tmp_port,layer4ptr+sizeof(tmp_port),sizeof(tmp_port));
-	
-	}
-	key->port=ntohs(tmp_port);
-	ndinfo = ndinfo_find(key);
-	if(ndinfo){
-		find = 1;
-		if(ndinfo_update(ndinfo,dir,ntohs(iphdr->tot_len)))/*update faild*/
-			log_debug("ndinfo_update faild");
-	}
-	log_debug("Catch the packet ,dir %s,%pI4->%pI4,keyip %pI4,keyport %d len %d",dir?"DOWN":"UP",(struct in_addr *)&iphdr->saddr,
-			 (struct in_addr *)&iphdr->daddr,&key->addr,key->port,ntohs(iphdr->tot_len));
-
-	return find;
-
+static int can_handle(const struct sk_buff *skb)
+{
+	if(!ip_hdr(skb)) /* not IP */
+		return 0;
+        if(ip_hdr(skb)->protocol != IPPROTO_TCP &&
+	               ip_hdr(skb)->protocol != IPPROTO_UDP &&
+	               ip_hdr(skb)->protocol != IPPROTO_ICMP)
+	        return 0;
+	return 1;
 }
 
-int core(struct sk_buff *skb,const char  *outif_name){
-	struct iphdr *iphdr = NULL;
-	struct ndinfo_key key;
-	struct wellkn_port_entry *wkp = NULL;
-	struct pattern_node *ptn = NULL;
-	char *payload =NULL ;
-	int payload_len = -1;
-	char app_name[APPNAMSIZ]={};
-	int dir;
+static int app_data_offset(const struct sk_buff *skb)
+{
+	int ip_hl = 4*ip_hdr(skb)->ihl;
 
-	iphdr = ip_hdr(skb);
-	
-    if(strstr(config_get()->userif, outif_name)){/*the outif is user , mean down*/
-		/*find the node and update the bytes[DOWN]*/
-		dir = DOWN;
-		if(preprocess_ndinfo(dir,&key,iphdr))/*find and update*/
-			return NF_ACCEPT;
-		else
-			goto unknown;
-
-	}else if(strstr(config_get()->resrcif,outif_name)){/*the outif is resource ,mean up*/
-
-		dir = UP;
-		if(preprocess_ndinfo(dir,&key,iphdr)){/*find and update*/
-			return NF_ACCEPT;
-		}else{
-			log_debug("do not find the node ...........");
-			wkp = wellkn_port_find(key.port);
-			if(wkp){
-				if(ndinfo_add(&key.addr ,key.port,ntohs(iphdr->tot_len),wkp->app_name)){/*add faild*/
-					log_debug("ndinfo_add failed");
-			}		
-				return NF_ACCEPT;
-			}else {/*can't find the wkp,need to do DPI*/
-				
-				/*if payload is 0 ,return inmediately*/
-		payload_len = get_skb_payload(skb,&payload);
-				if(!payload_len||!payload){
-					log_debug("payload_len is 0 or get_skb_payload faild");
-					return NF_ACCEPT;
-				}
-
-				ptn = pattern_find(payload);
-				if(ptn){
-					if(ndinfo_add(&key.addr ,key.port,ntohs(iphdr->tot_len),ptn->app_name)){/*add faild*/
-						log_debug("ndinfo_add failed");
-			        } 
-					return NF_ACCEPT;
-				}		
-				goto unknown;
-			}
-		}
+	if( ip_hdr(skb)->protocol == IPPROTO_TCP ) {
+		int tcp_hl = 4*(skb->data[ip_hl + 12] >> 4);
+	    return ip_hl + tcp_hl;
+	}else if( ip_hdr(skb)->protocol == IPPROTO_UDP  ) {
+		return ip_hl + 8; /* UDP header is always 8 bytes */
+	}else if( ip_hdr(skb)->protocol == IPPROTO_ICMP ) {
+		return ip_hl + 8; /* ICMP header is 8 bytes */
 	}else{
-		log_debug("the USERIF %s,RESOURCEIF %s,unknown out->name %s ",USERIF_DEF,RESRCIF_DEF,outif_name);
-		return NF_ACCEPT;
+		log_err(ERR_SYSM,"tried to handle unknown protocol!");
+		return ip_hl + 8; /* something reasonable */
+	}
+}
+
+static int total_acct_packets(struct nf_conn *ct)
+{
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35)
+	BUG_ON(ct == NULL);
+	return (ct->counters[IP_CT_DIR_ORIGINAL].packets + ct->counters[IP_CT_DIR_REPLY].packets);
+#else
+	struct nf_conn_acct *acct;
+	const struct nf_conn_counter *counters;
+
+	BUG_ON(ct == NULL);
+	acct = nf_conn_acct_find(ct);
+	if (!acct)
+		return 0;
+	counters = acct->counter;
+	return (atomic64_read(&counters[IP_CT_DIR_ORIGINAL].packets)+atomic64_read(&counters[IP_CT_DIR_REPLY].packets));
+#endif
+}
+void free_appdata(struct nf_conn *ct)
+{
+	if(ct->appflid.app_data != NULL) {
+		kfree(ct->appflid.app_data);
+		ct->appflid.app_data = NULL; /* don't free again */
+	}
+}
+
+/* add the new app data to the conntrack.  Return number of bytes added. */
+static int add_data(struct nf_conn * mct,
+                    char * app_data, int appdatalen)
+{
+	int length = 0, i;
+	int oldlength = mct->appflid.app_data_len;
+
+
+	/* This is a fix for a race condition by Deti Fliegl. However, I'm not 
+	   clear on whether the race condition exists or whether this really 
+	   fixes it.  I might just be being dense... Anyway, if it's not really 
+	   a fix, all it does is waste a very small amount of time. */
+	if(!mct->appflid.app_data) return 0;
+
+	/* Strip nulls. Make everything lower case (our regex lib doesn't
+	do case insensitivity).  Add it to the end of the current data. */
+	for(i = 0; i < maxdatalen-oldlength-1 &&
+		   i < appdatalen; i++) {
+		if(app_data[i] != '\0') {
+			/* the kernel version of tolower mungs 'upper ascii' */
+			mct->appflid.app_data[length+oldlength] =
+				isascii(app_data[i])? 
+					tolower(app_data[i]) : app_data[i];
+			length++;
+		}
 	}
 
-unknown:
-	if(ndinfo_add(&key.addr ,key.port,ntohs(iphdr->tot_len),"unknown"))/*add faild*/
-		log_debug("ndinfo_add faild");
+	mct->appflid.app_data[length+oldlength] = '\0';
+	mct->appflid.app_data_len = length + oldlength;
+
+	return length;
+}
+
+/*just add the appflid.app_proto*/
+void nf_ct_appflid_add(struct nf_conn *ct,const char *app_proto)
+{
+	if(!app_proto){
+		log_debug("%s can not handle the NULL app_proto",__func__);
+		return ;
+	}
+
+	spin_lock_bh(&ct->lock);
+	if(!ct->appflid.app_proto){
+		ct->appflid.app_proto = kmalloc(strlen(app_proto)+1, GFP_ATOMIC);
+        	if(!ct->appflid.app_proto&&net_ratelimit()){
+                	log_err(ERR_ALLOC_FAILED, "appflid: out of memory in %s, bailing.",__func__);
+		        return ;
+		}
+
+	memset(ct->appflid.app_proto,0,strlen(app_proto)+1);
+	strcpy(ct->appflid.app_proto,app_proto);
+	}
+	total_match++;
+	spin_unlock_bh(&ct->lock);
+}
+
+/*for debug*/
+void appflid_print_tuple(struct nf_conn *ct )
+{
+	printk("%pI4#%hu->%pI4#%hu %hu\n",&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.u3.all,
+         				  ntohs(ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.u.all),
+		                          &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.all,
+					  ntohs(ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.all),
+					  ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.protonum);
+}
+
+int core(struct sk_buff *skb)
+{
+//    	struct net *net = nf_ct_net(ct);
+	enum ip_conntrack_info mctinfo, ctinfo;
+	struct nf_conn *mct, *ct;
+	unsigned char * app_data;
+	unsigned int appdatalen = 0;
+	struct wellkn_port_entry *wkp;
+	struct pattern_node *ptn;
+
+	/*part 1,preprocess*/
+
+	if(!can_handle(skb)){
+		log_info(MODULE_NAME":this is some protocol I can't handle.");
+		goto out;
+	}
+
+	if(!(ct = nf_ct_get(skb, &ctinfo)) ||
+		       !(mct = nf_ct_get(skb,&mctinfo))){
+	    	log_info(MODULE_NAME": couldn't get conntrack.");
+		goto out;
+	}
+
+	appflid_print_tuple(ct);
+
+	while (master_ct(mct) != NULL)
+	        mct = master_ct(mct);
+
+	/*part 2,the connections has  been identify*/
+	if(mct->appflid.app_proto) {
+	    	log_debug("appflid:connection has been identify ,app_proto is %s",mct->appflid.app_proto);
+	    	free_appdata(mct);
+		if(!ct->appflid.app_proto)
+			nf_ct_appflid_add(ct,mct->appflid.app_proto);
+		goto out;		 
+	}
+
+	/*part 3,to identify the connection */
+	/*condition 1,the packets > num_packets*/
+	if(total_acct_packets(mct)>num_packets){
+	    	log_debug("appflid:the total num_packets of connection is gt num_packets ,app_proto is dentified  unknown ");
+	    	free_appdata(mct);
+		nf_ct_appflid_add(mct,"unknown");
+		goto out;
+	}
+
+	/*condition 2 ,only packets==1,need to do wellknown,and alloc the app_data*/
+	if(total_acct_packets(mct) == 1 && !mct->appflid.app_data ){
+		wkp = wellkn_port_find(ntohs(mct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.all));
+		if(wkp){
+	    	    printk("find the wkp,port =%d\n",wkp->port);
+		    nf_ct_appflid_add(mct,wkp->app_proto);
+		    goto out;
+		}  
+
+		mct->appflid.app_data = kmalloc(maxdatalen, GFP_ATOMIC);
+		if(!mct->appflid.app_data){
+		    if (net_ratelimit())
+			log_err(ERR_ALLOC_FAILED,"appflid: out of memory in match, bailing.");
+		    goto out;
+		}
+		mct->appflid.app_data[0] = '\0';
+
+	}	
+
+	/* Can be here, but unallocated, if numpackets is increased near
+	the beginning of a connection */
+	if(!mct->appflid.app_data){
+	    log_debug("appflid:connect  app_data is NULL ,"
+		       "the first packet of this connection is not pass here");
+	    goto out;
+	}
+
+	if(skb_is_nonlinear(skb) && skb_linearize(skb) != 0){ 
+		if (net_ratelimit())
+			log_debug("appflid: failed to linearize packet, bailing.");
+		goto out;
+        }   
+
+	/* now that the skb is linearized, it's safe to set these. */
+
+        app_data = skb->data + app_data_offset(skb);
+        appdatalen = skb_tail_pointer(skb) - app_data;
+
+	if(!add_data(mct, app_data, appdatalen)){  /* didn't add any data */
+	    log_debug("appflid:the datalen of packet is 0");
+	    goto out;
+	}	    
+
+	ptn = pattern_find(app_data,appdatalen);
+	if(ptn){
+	    printk("dpi success and app_proto=%s\n",ptn->app_proto);
+	    nf_ct_appflid_add(mct,ptn->app_proto);
+	}else{
+	    log_debug("dpi failed");
+	}
+
+out:
+//	printk("total_match=%d\n",total_match);
 	return NF_ACCEPT;
 }	
 

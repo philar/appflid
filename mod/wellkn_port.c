@@ -4,10 +4,15 @@
 
 #include "appflid/comm/types.h"
 #include "appflid/comm/constants.h"
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35)
 #include "appflid/mod/kstrtox.h"
+#endif
+
 #include "appflid/mod/config.h"
 #include "appflid/mod/rbtree.h"
 #include "appflid/mod/wellkn_port.h"
+#include "appflid/mod/count.h"
 #include "appflid/mod/read_confile.h"
 
 #define FILENAME "wellkn_port.conf"
@@ -22,16 +27,16 @@ static int compare_port(struct wellkn_port_entry *wkp,__u16 port ){
 	return  wkp->port - port;
 }
 
-int wellkn_port_add(const __u16 port,const char * app_name){
+int wellkn_port_add(const __u16 port,const char * app_proto){
 	int error;
 	struct wellkn_port_entry *result = kmem_cache_alloc(wkp_entry_cache, GFP_ATOMIC);
 	if (!result)
 		return -1;
 
-	log_debug("wellkn_port_add %d %s",port,app_name);
+	log_debug("wellkn_port_add %d %s",port,app_proto);
 	memset(result,0,sizeof(struct wellkn_port_entry));
 	result->port = port;
-	memcpy(result->app_name,app_name,strlen(app_name));
+	memcpy(result->app_proto,app_proto,strlen(app_proto));
 	RB_CLEAR_NODE(&result->tree_hook);
 	
 	spin_lock_bh(&wellkn_port_lock);
@@ -52,7 +57,7 @@ struct wellkn_port_entry *  wellkn_port_find(__u16 port){
 		return result;
 	}   
 	spin_lock_bh(&wellkn_port_lock);
-    result = rbtree_find(port, &wkps.tree, compare_port, struct wellkn_port_entry, tree_hook);
+	result = rbtree_find(port, &wkps.tree, compare_port, struct wellkn_port_entry, tree_hook);
 	spin_unlock_bh(&wellkn_port_lock);
     return result;
 } 
@@ -60,36 +65,40 @@ struct wellkn_port_entry *  wellkn_port_find(__u16 port){
 void wellkn_port_show(void){
 	struct rb_node *node;
 	spin_lock_bh(&wellkn_port_lock);
-	printk("the total wellkn_port is %ld\n",wkps.count);
+	printk("the total wellkn_port is %u\n",wkps.count);
 	for (node = rb_first(&wkps.tree); node; node = rb_next(node)){
 			  struct wellkn_port_entry *wkp=rb_entry(node, struct wellkn_port_entry, tree_hook);
-		      printk("port %d,app_name %s\n", wkp->port,wkp->app_name);
-    }
+		      printk("port %d,app_proto %s\n", wkp->port,wkp->app_proto);
+        }
 	spin_unlock_bh(&wellkn_port_lock);
 }
-static int parse_conf(char * conf){
+static int parse_conf(char * conf)
+{
 	char* line=NULL;
 	int err=0;
 
 	log_debug("start parse config file ....");
-    while ( (line = strsep(&conf, "\n")) != NULL){
+	while ( (line = strsep(&conf, "\n")) != NULL){
 		__u16 port;
-		char app_name[APPNAMSIZ]={};
+		char app_proto[APPNAMSIZ]={};
 		char *ptr = NULL; 
-	    char tmp_port[10]={};
+		char tmp_port[10]={};
 
-	    if (*line == '#' || strlen(line) == 0)
-            continue;
+		if (*line == '#' || strlen(line) == 0)
+	            continue;
 
-    	ptr = strchr(line,DECOLLATER);
-    	strncpy(app_name,ptr+1,strlen(ptr+1));
-	    strncpy(tmp_port,line,ptr-line);
+    		ptr = strchr(line,DECOLLATER);
+		if(!ptr)
+		    continue;
+		strncpy(app_proto,line,ptr-line);
+	    	strncpy(tmp_port,ptr+1,strlen(ptr+1));
 		if(kstrtou16(tmp_port,10,&port))
 			return -EINVAL;
-		err=wellkn_port_add(port,app_name);
+		count_add_proto(app_proto);
+		err=wellkn_port_add(port,app_proto);
 		if(err)
 			return err;
-   	}
+    	}
 	return err;
 }
 

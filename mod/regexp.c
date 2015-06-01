@@ -1,42 +1,3 @@
-/*
- * regcomp and regexec -- regsub and regerror are elsewhere
- * @(#)regexp.c	1.3 of 18 April 87
- *
- *	Copyright (c) 1986 by University of Toronto.
- *	Written by Henry Spencer.  Not derived from licensed software.
- *
- *	Permission is granted to anyone to use this software for any
- *	purpose on any computer system, and to redistribute it freely,
- *	subject to the following restrictions:
- *
- *	1. The author is not responsible for the consequences of use of
- *		this software, no matter how awful, even if they arise
- *		from defects in it.
- *
- *	2. The origin of this software must not be misrepresented, either
- *		by explicit claim or by omission.
- *
- *	3. Altered versions must be plainly marked as such, and must not
- *		be misrepresented as being the original software.
- *
- * Beware that some of this code is subtly aware of the way operator
- * precedence is structured in regular expressions.  Serious changes in
- * regular-expression syntax might require a total rethink.
- *
- * This code was modified by Ethan Sommer to work within the kernel
- * (it now uses kmalloc etc..)
- *
- * Modified slightly by Matthew Strait to use more modern C.
- */
-
-/**********for userspace**************/
-/*#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>*/
-
-
-/************************/
-
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -53,9 +14,8 @@
 /*
  - regsub - perform substitutions after a regexp match
  */
-void
-regsub(struct regexp * prog, char * source, char * dest)
-{
+void regsub(struct regexp * prog, char * source, char * dest){
+
 	register char *src;
 	register char *dst;
 	register char c;
@@ -100,15 +60,6 @@ regsub(struct regexp * prog, char * source, char * dest)
 	}
 	*dst++ = '\0';
 }
-
-
-/* added by ethan and matt.  Lets it work in both kernel and user space.
-(So iptables can use it, for instance.)  Yea, it goes both ways... */
-#if __KERNEL__
-  #define malloc(foo) kmalloc(foo,GFP_ATOMIC)
-#else
-  #define printk(format,args...) printf(format,##args)
-#endif
 
 void regerror(char * s){
         printk("<3>Regexp: %s\n", s);
@@ -212,11 +163,6 @@ void regerror(char * s){
 /*
  * Utility definitions.
  */
-#ifndef CHARBITS
-#define	UCHARAT(p)	((int)*(unsigned char *)(p))
-#else
-#define	UCHARAT(p)	((int)*(p)&CHARBITS)
-#endif
 
 #define	FAIL(m)	{ regerror(m); return(NULL); }
 #define	ISMULT(c)	((c) == '*' || (c) == '+' || (c) == '?')
@@ -248,23 +194,19 @@ long regsize;		/* Code size. */
 /*
  * Forward declarations for regcomp()'s friends.
  */
-#ifndef STATIC
-#define	STATIC	static
-#endif
-STATIC char *reg(struct match_globals *g, int paren,int *flagp);
-STATIC char *regbranch(struct match_globals *g, int *flagp);
-STATIC char *regpiece(struct match_globals *g, int *flagp);
-STATIC char *regatom(struct match_globals *g, int *flagp);
-STATIC char *regnode(struct match_globals *g, char op);
-STATIC char *regnext(struct match_globals *g, char *p);
-STATIC void regc(struct match_globals *g, char b);
-STATIC void reginsert(struct match_globals *g, char op, char *opnd);
-STATIC void regtail(struct match_globals *g, char *p, char *val);
-STATIC void regoptail(struct match_globals *g, char *p, char *val);
 
-/*__kernel_size_t my_strcspn(const char *s1,const char *s2)*/
+static char *reg(struct match_globals *g, int paren,int *flagp);
+static char *regbranch(struct match_globals *g, int *flagp);
+static char *regpiece(struct match_globals *g, int *flagp);
+static char *regatom(struct match_globals *g, int *flagp);
+static char *regnode(struct match_globals *g, char op);
+static char *regnext(struct match_globals *g, char *p);
+static void regc(struct match_globals *g, char b);
+static void reginsert(struct match_globals *g, char op, char *opnd);
+static void regtail(struct match_globals *g, char *p, char *val);
+static void regoptail(struct match_globals *g, char *p, char *val);
 
-/*for userspace*/
+
 size_t my_strcspn(const char *s1,const char *s2)
 {
         char *scan1;
@@ -326,7 +268,7 @@ struct regexp * regcomp(char *exp,int *patternsize){
 
 	/* Allocate space. */
 	*patternsize=sizeof(struct regexp) + (unsigned)g.regsize;
-	r = (struct regexp *)malloc(sizeof(struct regexp) + (unsigned)g.regsize);
+	r = (struct regexp *)kmalloc(sizeof(struct regexp) + (unsigned)g.regsize,GFP_ATOMIC);
 	if (r == NULL)
 		FAIL("out of space");
 
@@ -777,15 +719,10 @@ regoptail(struct match_globals *g, char *p, char *val)
 /*
  * Forwards.
  */
-STATIC int regtry(struct match_globals *g, struct regexp *prog, char *string);
-STATIC int regmatch(struct match_globals *g, char *prog);
-STATIC int regrepeat(struct match_globals *g, char *p);
+static int regtry(struct match_globals *g, struct regexp *prog, char *string);
+static int regmatch(struct match_globals *g, char *prog);
+static int regrepeat(struct match_globals *g, char *p);
 
-#ifdef DEBUG
-int regnarrate = 0;
-//void regdump(void);
-STATIC char *regprop(char *op);
-#endif
 
 /*
  - regexec - match a regexp against a string
@@ -796,7 +733,6 @@ regexec(struct regexp *prog, char *string)
 	register char *s;
 	struct match_globals g;
 	int result=0;
-
 	/* Be paranoid... */
 	if (prog == NULL || string == NULL) {
 		printk("<3>Regexp: NULL parameter result=%d\n",result);
@@ -880,10 +816,10 @@ regtry(struct match_globals *g,struct  regexp *prog, char *string)
 	if (regmatch(g, prog->program + 1)) {
 		prog->startp[0] = string;
 		prog->endp[0] = g->reginput;
-//		printk("%s,result=1\n",__func__);
+		log_debug("%s,result=1",__func__);
 		return(1);
 	} else{
-//		printk("%s,result=0\n",__func__);
+		log_debug("%s,result=0",__func__);
 		return(0);
 	}
 }
@@ -904,15 +840,7 @@ regmatch(struct match_globals *g, char *prog)
 	register char *scan = prog; /* Current node. */
 	char *next;		    /* Next node. */
 
-#ifdef DEBUG
-	if (scan != NULL && regnarrate)
-		log_debug("%s(\n", regprop(scan));
-#endif
 	while (scan != NULL) {
-#ifdef DEBUG
-		if (regnarrate)
-			log_debug("%s...\n", regprop(scan));
-#endif
 		next = regnext(g, scan);
 
 		switch (OP(scan)) {
@@ -929,7 +857,7 @@ regmatch(struct match_globals *g, char *prog)
 				return(0);
 			g->reginput++;
 			break;
-		case EXACTLY: {
+		case EXACTLY:{
 				register int len;
 				register char *opnd;
 
@@ -968,6 +896,7 @@ regmatch(struct match_globals *g, char *prog)
 				register int no;
 				register char *save;
 
+
 				no = OP(scan) - OPEN;
 				save = g->reginput;
 
@@ -996,6 +925,7 @@ regmatch(struct match_globals *g, char *prog)
 			{
 				register int no;
 				register char *save;
+
 
 				no = OP(scan) - CLOSE;
 				save = g->reginput;
@@ -1146,135 +1076,7 @@ regnext(struct match_globals *g, char *p)
 		return(p+offset);
 }
 
-#ifdef DEBUG
 
-//STATIC char *regprop(void);
-
-/*
- - regdump - dump a regexp onto stdout in vaguely comprehensible form
- */
-void
-regdump(struct regexp *r)
-{
-	register char *s;
-	register char op = EXACTLY;	/* Arbitrary non-END op. */
-	register char *next;
-	/* extern char *strchr(); */
-
-
-	s = r->program + 1;
-	while (op != END) {	/* While that wasn't END last time... */
-		op = OP(s);
-		printk("%2ld%s", s-r->program, regprop(s));	/* Where, what. */
-		next = regnext(s);
-		if (next == NULL)		/* Next ptr. */
-			printk("(0)");
-		else
-			printk("(%ld)", (s-r->program)+(next-s));
-		s += 3;
-		if (op == ANYOF || op == ANYBUT || op == EXACTLY) {
-			/* Literal string, where present. */
-			while (*s != '\0') {
-				putchar(*s);
-				s++;
-			}
-			s++;
-		}
-		putchar('\n');
-	}
-
-	/* Header fields of interest. */
-	if (r->regstart != '\0')
-		printk("start `%c' ", r->regstart);
-	if (r->reganch)
-		printk("anchored ");
-	if (r->regmust != NULL)
-		printk("must have \"%s\"", r->regmust);
-	printk("\n");
-}
-
-/*
- - regprop - printable representation of opcode
- */
-static char *
-regprop(char *op)
-{
-#define BUFLEN 50
-	register char *p;
-	static char buf[BUFLEN];
-
-	strcpy(buf, ":");
-
-	switch (OP(op)) {
-	case BOL:
-		p = "BOL";
-		break;
-	case EOL:
-		p = "EOL";
-		break;
-	case ANY:
-		p = "ANY";
-		break;
-	case ANYOF:
-		p = "ANYOF";
-		break;
-	case ANYBUT:
-		p = "ANYBUT";
-		break;
-	case BRANCH:
-		p = "BRANCH";
-		break;
-	case EXACTLY:
-		p = "EXACTLY";
-		break;
-	case NOTHING:
-		p = "NOTHING";
-		break;
-	case BACK:
-		p = "BACK";
-		break;
-	case END:
-		p = "END";
-		break;
-	case OPEN+1:
-	case OPEN+2:
-	case OPEN+3:
-	case OPEN+4:
-	case OPEN+5:
-	case OPEN+6:
-	case OPEN+7:
-	case OPEN+8:
-	case OPEN+9:
-		snprintk(buf+strlen(buf),BUFLEN-strlen(buf), "OPEN%d", OP(op)-OPEN);
-		p = NULL;
-		break;
-	case CLOSE+1:
-	case CLOSE+2:
-	case CLOSE+3:
-	case CLOSE+4:
-	case CLOSE+5:
-	case CLOSE+6:
-	case CLOSE+7:
-	case CLOSE+8:
-	case CLOSE+9:
-		snprintk(buf+strlen(buf),BUFLEN-strlen(buf), "CLOSE%d", OP(op)-CLOSE);
-		p = NULL;
-		break;
-	case STAR:
-		p = "STAR";
-		break;
-	case PLUS:
-		p = "PLUS";
-		break;
-	default:
-		printk("<3>Regexp: corrupted opcode\n");
-		break;
-	}
-	if (p != NULL)
-		strncat(buf, p, BUFLEN-strlen(buf));
-	return(buf);
-}
-#endif
 
 /*int main(int argc,char **argv){
 	char *pattern,*test_str;

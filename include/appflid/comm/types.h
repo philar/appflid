@@ -2,6 +2,7 @@
 #define APPFLID_TYPES_H
 
 #include <linux/types.h>
+#include <linux/version.h>
 #ifdef __KERNEL__
         #include <linux/in.h>
 #else
@@ -55,6 +56,8 @@ enum ERROR_CODE {
 	ERR_ALLOC_FAILED = 2,
 	ERR_OPEN_FILE = 3,
 	ERR_UNKNOWN_ERROR = 4,
+	ERR_OTHER = 5,
+	ERR_SYSM = 6,
 
 	/*netlink*/
 	ERR_PID = 4000,
@@ -85,6 +88,7 @@ enum argp_flags {
 	    ARGP_DNS = 1001,
 
 };
+
 
 #endif
 

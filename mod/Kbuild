@@ -6,7 +6,9 @@ obj-m += appflid.o
 
 appflid-objs += nf_hook.o
 appflid-objs += config.o
+appflid-objs += print.o
 appflid-objs += core.o
+appflid-objs += count.o
 appflid-objs += regexp.o
 appflid-objs += read_confile.o
 appflid-objs += ndinfo.o
