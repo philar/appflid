@@ -128,14 +128,15 @@ static void wellkn_port_destroy_aux(struct rb_node *node)
 {
 	        kmem_cache_free(wkp_entry_cache,rb_entry(node, struct wellkn_port_entry, tree_hook));
 }
-void wellkn_port_destroy(void){
+void wellkn_port_destroy(void)
+{
 	log_debug("Emptying the wellkn_port_table...");
 	wellkn_port_show();
+
 	spin_lock_bh(&wellkn_port_lock);
-
 	rbtree_clear(&wkps.tree, wellkn_port_destroy_aux);
-
 	spin_unlock_bh(&wellkn_port_lock);
+	
 	kmem_cache_destroy(wkp_entry_cache);
 }
 

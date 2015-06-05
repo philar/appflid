@@ -58,6 +58,7 @@ enum ERROR_CODE {
 	ERR_UNKNOWN_ERROR = 4,
 	ERR_OTHER = 5,
 	ERR_SYSM = 6,
+	ERR_REGISTER = 7,
 
 	/*netlink*/
 	ERR_PID = 4000,

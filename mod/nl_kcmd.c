@@ -54,8 +54,7 @@ static int nl_rcv_msg(struct sk_buff *skb){
 	struct nlmsghdr *nlh;
 	struct arguments *args; 
 	char buf[MAX_PAYLOAD]={};
-	int i;
-//	struct net *net = sock_net(skb->sk);
+	struct net *net = sock_net(skb->sk);
 
 
 	nlh = nlmsg_hdr(skb);
@@ -63,18 +62,13 @@ static int nl_rcv_msg(struct sk_buff *skb){
 	args=(struct arguments *)NLMSG_DATA(nlh);
 	switch(args->key){
 	case ARGP_ALL:
-		for(i=0;i<5;i++){
-	/*		nf_ct_appflid_count(net,&app_cnt[i]);
-		sprintf(buf,"%s%s packets %lld/up %lld/down  bytes %lld/up %lld/down\n",
-				 buf,app_cnt[i].app_proto,app_cnt[i].packets[0],app_cnt[i].packets[1],
-				 app_cnt[i].bytes[0],app_cnt[i].bytes[1]);*/
-		}
+		count_total(net,buf,MAX_PAYLOAD);
 		nl_send_to_user(nlh->nlmsg_pid,buf,strlen(buf));
 	break;
-	case ARGP_HTTP:
-/*		ndinfo_count("http",&up,&down);
-		sprintf(buf,"http %ldG/up %ldG/down\n",up>>30,down>>30);
-		nl_send_to_user(nlh->nlmsg_pid,buf,strlen(buf));*/
+//	case ARGP_FLUSH:
+//		flush_counter();
+//		show_counter();
+//		nl_send_to_user(nlh->nlmsg_pid,buf,strlen(buf));
 	case ARGP_DNS:
 //		nl_send_to_user(nlh->nlmsg_pid,buf,strlen(buf));
 		break;	

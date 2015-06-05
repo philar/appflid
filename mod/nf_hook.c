@@ -63,6 +63,7 @@ static void deinit(void){
 	nl_kernel_destroy();
 	pattern_destroy();
 	wellkn_port_destroy();
+	count_destroy();
 	config_destroy();
 }
 
@@ -71,34 +72,42 @@ static int __init appflid_init(void){
 
 	error=config_init(userif,resrcif,confiledir);
 	if (error)
-    		goto failure;
+    		goto err_config;
 
 	error=count_init(); /*must init before wellkn_port and pattern*/
 	if (error)
-    		goto failure;
+    		goto err_count;
 
 	error=wellkn_port_init();
 	if (error)
-    		goto failure;
+    		goto err_wellkn_port;
 
 	error=pattern_init();
 	if (error)
-    		goto failure;
+    		goto err_pattern;
 	
 	error=nl_kernel_init();
 	if (error)
-    		goto failure;
+    		goto err_nl_kernel;
 
 	error=nf_register_hooks(appflid_ops, ARRAY_SIZE(appflid_ops));
 	if (error)
-    		goto failure;
+    		goto err_hooks;
 
 	log_info(MODULE_NAME " module inserted");
-	return error;
+	return 0;
 
-failure:
-	deinit();
-	nf_unregister_hooks(appflid_ops, ARRAY_SIZE(appflid_ops));
+err_hooks:
+	nl_kernel_destroy();
+err_nl_kernel:
+	pattern_destroy();
+err_pattern:
+	wellkn_port_destroy();
+err_wellkn_port:
+	count_destroy();
+err_count:
+	config_destroy();
+err_config:
 	return error;
 }
 static void __exit appflid_exit(void){

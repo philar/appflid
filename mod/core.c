@@ -170,7 +170,7 @@ int core(struct sk_buff *skb)
 		goto out;
 	}
 
-	appflid_print_tuple(ct);
+//	appflid_print_tuple(ct);
 
 	while (master_ct(mct) != NULL)
 	        mct = master_ct(mct);
