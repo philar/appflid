@@ -13,7 +13,7 @@ appflid-objs += regexp.o
 appflid-objs += read_confile.o
 appflid-objs += ndinfo.o
 appflid-objs += wellkn_port.o
-appflid-objs += pattern.o
+appflid-objs += aproto.o
 appflid-objs += nl_kcmd.o
 appflid-objs += kfile.o
 

@@ -15,7 +15,7 @@
 #include "appflid/mod/config.h"
 #include "appflid/mod/ndinfo.h"
 #include "appflid/mod/wellkn_port.h"
-#include "appflid/mod/pattern.h"
+#include "appflid/mod/aproto.h"
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35)
 #else
@@ -155,7 +155,7 @@ int core(struct sk_buff *skb)
 	unsigned char * app_data;
 	unsigned int appdatalen = 0;
 	struct wellkn_port_entry *wkp;
-	struct pattern_node *ptn;
+	struct aproto_node *and;
 
 	/*part 1,preprocess*/
 
@@ -236,10 +236,11 @@ int core(struct sk_buff *skb)
 	    goto out;
 	}	    
 
-	ptn = pattern_find(app_data,appdatalen);
-	if(ptn){
-	    printk("dpi success and app_proto=%s\n",ptn->app_proto);
-	    nf_ct_appflid_add(mct,ptn->app_proto);
+	and = aproto_find(app_data,appdatalen);
+	if(and){
+	    printk("dpi success and name=%s\n",and->name);
+	    nf_ct_appflid_add(mct,and->name);
+	    and->handle(skb);
 	}else{
 	    log_debug("dpi failed");
 	}

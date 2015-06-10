@@ -12,7 +12,7 @@
 #include "appflid/mod/core.h"
 #include "appflid/mod/count.h"
 #include "appflid/mod/wellkn_port.h"
-#include "appflid/mod/pattern.h"
+#include "appflid/mod/aproto.h"
 #include "appflid/mod/nl_kcmd.h"
 #include "appflid/mod/config.h"
 
@@ -61,7 +61,7 @@ static struct nf_hook_ops appflid_ops[] __read_mostly = {
 };
 static void deinit(void){
 	nl_kernel_destroy();
-	pattern_destroy();
+	aproto_destroy();
 	wellkn_port_destroy();
 	count_destroy();
 	config_destroy();
@@ -74,7 +74,7 @@ static int __init appflid_init(void){
 	if (error)
     		goto err_config;
 
-	error=count_init(); /*must init before wellkn_port and pattern*/
+	error=count_init(); /*must init before wellkn_port and aproto*/
 	if (error)
     		goto err_count;
 
@@ -82,9 +82,9 @@ static int __init appflid_init(void){
 	if (error)
     		goto err_wellkn_port;
 
-	error=pattern_init();
+	error=aproto_init();
 	if (error)
-    		goto err_pattern;
+    		goto err_aproto;
 	
 	error=nl_kernel_init();
 	if (error)
@@ -100,8 +100,8 @@ static int __init appflid_init(void){
 err_hooks:
 	nl_kernel_destroy();
 err_nl_kernel:
-	pattern_destroy();
-err_pattern:
+	aproto_destroy();
+err_aproto:
 	wellkn_port_destroy();
 err_wellkn_port:
 	count_destroy();

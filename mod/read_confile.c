@@ -15,8 +15,8 @@ char * read_confile(const char *filename){
 	}
 	strcpy(filepath,config_get()->confiledir);
 	strcat(filepath,filename);
-    f = file_open(filepath, O_RDONLY, 0); 
-    if (f == NULL){
+    	f = file_open(filepath, O_RDONLY, 0); 
+    	if (f == NULL){
 			log_err(ERR_OPEN_FILE,"open file %s  failed",filepath);
 			return NULL;
 	}
@@ -25,7 +25,7 @@ char * read_confile(const char *filename){
 	
 	buf = (char*)kmalloc(fsize+1, GFP_ATOMIC);
 	file_read(f,0,buf,fsize);
-    file_close(f);
+	file_close(f);
 	return buf;
 }
 
