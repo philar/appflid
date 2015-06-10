@@ -136,6 +136,7 @@ static void  count_inactive(struct nf_conn *nfct)
 	
 	if(count_add(ct,app_cnt))
 		log_debug("appflid :%s failed,maybe the nf_conntrack_acct is disable  ",__func__);
+
 	rcu_read_unlock();
 
        	jprobe_return();

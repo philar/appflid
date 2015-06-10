@@ -13,6 +13,16 @@ struct qq_info{
         uint32_t        num;
 };
 
+void qq_show(const struct nf_conn *ct)
+{
+	struct qq_info *qq;
+
+	if (ct->appflid.app_private) {
+		qq = ct->appflid.app_private;		
+		printk("version=%d%d,num=%d\n",qq->version[0],qq->version[1],qq->num);
+	}
+}
+
 static int qq_header(const char *l4_data)
 {
 	int i;
@@ -67,6 +77,7 @@ int qq_handle(struct nf_conn *ct,
 
 struct aproto_node qq = {
 	.handle = qq_handle,
+	.show = qq_show,
 }; 
 
 static int __init  qq_init(void)

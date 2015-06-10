@@ -10,6 +10,7 @@ struct aproto_node{
 	char name[APPNAMSIZ];
 	struct regexp *rgxp;
 	int (*handle)(struct nf_conn *ct,const char *l4_data, const unsigned int data_len);
+	void (*show)(const struct nf_conn *ct);
 
 };
 struct aproto_node *aproto_find(unsigned char *payload,unsigned int payload_len);

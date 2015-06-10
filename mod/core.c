@@ -241,6 +241,7 @@ int core(struct sk_buff *skb)
 	    printk("dpi success and name=%s\n",and->name);
 	    nf_ct_appflid_add(mct,and->name);
 	    and->handle(ct,app_data,appdatalen);/*need complete payload*/
+	    and->show(ct);
 	}else{
 	    log_debug("dpi failed");
 	}
