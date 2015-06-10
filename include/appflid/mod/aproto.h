@@ -3,12 +3,13 @@
 
 #include <linux/skbuff.h>
 #include <linux/list.h>
+#include <net/netfilter/nf_conntrack.h>
 #include "appflid/comm/constants.h"
 struct aproto_node{
 	struct list_head list_hook;
 	char name[APPNAMSIZ];
 	struct regexp *rgxp;
-	int (*handle)(const struct sk_buff *skb);
+	int (*handle)(struct nf_conn *ct,const char *l4_data, const unsigned int data_len);
 
 };
 struct aproto_node *aproto_find(unsigned char *payload,unsigned int payload_len);

@@ -236,11 +236,11 @@ int core(struct sk_buff *skb)
 	    goto out;
 	}	    
 
-	and = aproto_find(app_data,appdatalen);
+	and = aproto_find(mct->appflid.app_data,mct->appflid.app_data_len);/*DPI */
 	if(and){
 	    printk("dpi success and name=%s\n",and->name);
 	    nf_ct_appflid_add(mct,and->name);
-	    and->handle(skb);
+	    and->handle(ct,app_data,appdatalen);/*need complete payload*/
 	}else{
 	    log_debug("dpi failed");
 	}
