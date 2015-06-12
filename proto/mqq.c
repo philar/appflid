@@ -8,6 +8,11 @@
 
 MODULE_LICENSE("GPL");
 
+void mqq_show(const struct nf_conn *ct)
+{
+
+}
+
 int mqq_handle(struct nf_conn *ct,
                const char *l4_data, 
                const unsigned int data_len)
@@ -18,7 +23,8 @@ int mqq_handle(struct nf_conn *ct,
 }
 
 struct aproto_node mqq = {
-	.handle = mqq_handle,
+	.handler = mqq_handle,
+	.show = mqq_show
 }; 
 
 static int __init  mqq_init(void)

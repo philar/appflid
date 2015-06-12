@@ -2,17 +2,19 @@
 #include "appflid/mod/config.h"
 #include "appflid/mod/kfile.h"
 
-char * read_confile(const char *filename){
+char * read_confile(const char *filename)
+{
 	char *buf = NULL;
 	struct file* f = NULL;
 	off_t fsize;
 	char filepath[255]={};
 	
 	log_debug("start to read the config file ......");
-	if(!filename){
+	if (!filename){
 		log_err(ERR_NULL,"can not handle the NUll filename");
 		return NULL;
 	}
+
 	strcpy(filepath,config_get()->confiledir);
 	strcat(filepath,filename);
     	f = file_open(filepath, O_RDONLY, 0); 

@@ -15,11 +15,11 @@ struct qq_info{
 
 void qq_show(const struct nf_conn *ct)
 {
-	struct qq_info *qq;
 
-	if (ct->appflid.app_private) {
-		qq = ct->appflid.app_private;		
-		printk("version=%d%d,num=%d\n",qq->version[0],qq->version[1],qq->num);
+	if (ct && ct->appflid.app_private) {
+		printk("version=%02x%02x,num=%d\n",((struct qq_info *)ct->appflid.app_private)->version[0],
+                                           ((struct qq_info *)ct->appflid.app_private)->version[1],
+                                           ntohl(((struct qq_info *)ct->appflid.app_private)->num));
 	}
 }
 
@@ -70,13 +70,16 @@ int qq_handle(struct nf_conn *ct,
 	
 	memset(ct->appflid.app_private,0,sizeof(struct qq_info));
 	memcpy(ct->appflid.app_private,&qq,sizeof(struct qq_info));
+/*	printk("version=%02d%02d,num=%d\n",((struct qq_info *)ct->appflid.app_private)->version[0],
+                                           ((struct qq_info *)ct->appflid.app_private)->version[1],
+                                           ((struct qq_info *)ct->appflid.app_private)->num);*/
 
 	return 0;
 
 }
 
 struct aproto_node qq = {
-	.handle = qq_handle,
+	.handler = qq_handle,
 	.show = qq_show,
 }; 
 

@@ -28,15 +28,15 @@ static int maxdatalen = 2048;
 static int total_match=0;
 
 
-static int can_handle(const struct sk_buff *skb)
+static bool can_handle(const struct sk_buff *skb)
 {
 	if(!ip_hdr(skb)) /* not IP */
-		return 0;
+		return false;
         if(ip_hdr(skb)->protocol != IPPROTO_TCP &&
 	               ip_hdr(skb)->protocol != IPPROTO_UDP &&
 	               ip_hdr(skb)->protocol != IPPROTO_ICMP)
 	        return 0;
-	return 1;
+	return true;
 }
 
 static int app_data_offset(const struct sk_buff *skb)
@@ -240,8 +240,8 @@ int core(struct sk_buff *skb)
 	if(and){
 	    printk("dpi success and name=%s\n",and->name);
 	    nf_ct_appflid_add(mct,and->name);
-	    and->handle(ct,app_data,appdatalen);/*need complete payload*/
-	    and->show(ct);
+            and->handler(mct,app_data,appdatalen);/*need complete payload*/
+	    and->show(mct);
 	}else{
 	    log_debug("dpi failed");
 	}

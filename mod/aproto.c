@@ -150,7 +150,7 @@ static int is_contains_aproto(const char *name)
 	return 0;
 }
 
-int aproto_add(struct aproto_node *and)
+static int aproto_add(struct aproto_node *and)
 {
 	struct aproto_node *new;
 
@@ -171,7 +171,12 @@ int aproto_add(struct aproto_node *and)
 	memset(new,0,sizeof(struct aproto_node));
 	memcpy(new->name,and->name,strlen(and->name));
 	new->rgxp = and->rgxp;
-	new->handle = and->handle;
+	if (!and->handler || !and->show) {
+		log_err(ERR_NULL,"the handler or show function can not be NULL");
+		return -EINVAL;
+	}
+	new->handler = and->handler;
+	new->show = and->show;
 	
 
 	spin_lock_bh(&aproto_lock);
@@ -284,7 +289,8 @@ void unregister_aproto(struct aproto_node *and)
 		log_info("the proto is unregister");
 		return ;		
 	}
-	aproto_remove(and);	
+	aproto_remove(and);
+	count_remove_proto(and->name);	
 	
 }
 EXPORT_SYMBOL(unregister_aproto);

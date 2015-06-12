@@ -11,20 +11,56 @@ static struct app_counter active[MAX_PROTO];
 static struct app_counter inactive[MAX_PROTO];
 static int count_index;
 
+static DEFINE_SPINLOCK(count_lock);
+
 
 int  count_add_proto(const char *app_proto)
 {
 	if (!app_proto)	
 		return -1;
+
+	spin_lock_bh(&count_lock);
 	if (count_index >= MAX_PROTO){
 		log_debug("the number of proto (%d) is greater than MAX_PROTO (%d) ",count_index + 1, MAX_PROTO);
+		spin_unlock_bh(&count_lock);
 		return -1;	
 	}
-
+	
 	strcpy(active[count_index].app_proto,app_proto);
 	strcpy(inactive[count_index].app_proto,app_proto);
 	count_index++;
+	spin_unlock_bh(&count_lock);
 	return 0;
+}
+
+int count_remove_proto(const char *app_proto)
+{
+	int i;
+	int rindex = -1;
+
+	if (!app_proto)	
+		return -1;
+	
+	spin_lock_bh(&count_lock);
+	for (i = 0;i < count_index; i++) {
+		if (rindex >= 0 ) {
+			memcpy(&active[i-1],&active[i],sizeof(struct app_counter));
+			memcpy(&inactive[i-1],&inactive[i],sizeof(struct app_counter));
+		}
+
+		if (rindex == -1 && !strcmp(active[i].app_proto,app_proto)) {
+			rindex = i;			
+		}
+	}
+
+	count_index--;			
+	memset(&active[count_index],0,sizeof(struct app_counter));
+	memset(&inactive[count_index],0,sizeof(struct app_counter));
+	spin_unlock_bh(&count_lock);
+		
+	return rindex == -1 ? -1:0;
+
+
 }
 
 static struct app_counter *count_strcmp(const char *app_proto,struct app_counter *app_cnt)
@@ -33,10 +69,16 @@ static struct app_counter *count_strcmp(const char *app_proto,struct app_counter
 	if(!app_proto)
 		return NULL;
 
+	spin_lock_bh(&count_lock);
+
 	for (i = 0;i < count_index;i++) {
-		if(!strcmp(app_cnt[i].app_proto,app_proto))
+		if (!strcmp(app_cnt[i].app_proto,app_proto)) {
+			spin_unlock_bh(&count_lock);
 			return &app_cnt[i];
+		}
 	}
+
+	spin_unlock_bh(&count_lock);
 	return NULL;
 }
 
@@ -61,17 +103,21 @@ static int count_add(struct nf_conn *ct ,struct app_counter *app_cnt)
 static void flush_counter(struct app_counter *app_cnt)
 {
 	int i;
+	
+	spin_lock_bh(&count_lock);
 	for (i = 0; i < count_index;i++) {
 		atomic64_set(&app_cnt[i].packets[IP_CT_DIR_ORIGINAL],0);
 		atomic64_set(&app_cnt[i].packets[IP_CT_DIR_REPLY],0);
 		atomic64_set(&app_cnt[i].bytes[IP_CT_DIR_ORIGINAL],0);
 		atomic64_set(&app_cnt[i].bytes[IP_CT_DIR_REPLY],0);
 	}
+	spin_unlock_bh(&count_lock);
 }
 static void show_counter(struct app_counter *app_cnt)
 {
 	int i;
 	printk("the total proto is %d\n",count_index);
+	spin_lock_bh(&count_lock);
 	for (i = 0; i < count_index;i++) {
 		printk("%s packets %ld/up %ld/down,bytes %ld/up %ld/down\n",
 		app_cnt[i].app_proto,
@@ -80,6 +126,8 @@ static void show_counter(struct app_counter *app_cnt)
 		atomic64_read(&app_cnt[i].bytes[IP_CT_DIR_ORIGINAL]),
 		atomic64_read(&app_cnt[i].bytes[IP_CT_DIR_REPLY]));
 	}
+	spin_unlock_bh(&count_lock);
+
 	
 }
 static int count_active(struct net *net)
@@ -154,6 +202,8 @@ int count_total(struct net *net,char *buf,size_t buf_len)
 	count_active(net);
 
 	memset(buf,0,buf_len);
+	
+	spin_lock_bh(&count_lock);
 	for (i = 0; i < count_index; i++) {
 		sprintf(buf,"%s%s packets %ld/up %ld/down,bytes %ld/up %ld/down\n",
 			buf,active[i].app_proto,
@@ -163,9 +213,12 @@ int count_total(struct net *net,char *buf,size_t buf_len)
 		atomic64_read(&active[i].bytes[IP_CT_DIR_REPLY])+atomic64_read(&inactive[i].bytes[IP_CT_DIR_REPLY]));
 		if(i==0)
 			per_len = strlen(buf);
-		if(buf_len - strlen(buf) < per_len + 1)
+		if (buf_len - strlen(buf) < per_len + 1)	{
+			spin_unlock_bh(&count_lock);
 			return -1;
+		}
 	}
+	spin_unlock_bh(&count_lock);
 	return 0;
 }
 

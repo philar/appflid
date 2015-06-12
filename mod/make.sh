@@ -1,3 +1,5 @@
+rmmod mqq
+rmmod qq
 rmmod appflid
 make
 make modules_install

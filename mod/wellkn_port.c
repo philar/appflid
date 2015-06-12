@@ -27,11 +27,12 @@ static int compare_port(struct wellkn_port_entry *wkp,__u16 port ){
 	return  wkp->port - port;
 }
 
-int wellkn_port_add(const __u16 port,const char * app_proto){
+int wellkn_port_add(const __u16 port,const char * app_proto)
+{
 	int error;
 	struct wellkn_port_entry *result = kmem_cache_alloc(wkp_entry_cache, GFP_ATOMIC);
 	if (!result)
-		return -1;
+		return -EINVAL;
 
 	log_debug("wellkn_port_add %d %s",port,app_proto);
 	memset(result,0,sizeof(struct wellkn_port_entry));
@@ -50,7 +51,8 @@ int wellkn_port_add(const __u16 port,const char * app_proto){
 	spin_unlock_bh(&wellkn_port_lock);
 	return 0;
 }
-struct wellkn_port_entry *  wellkn_port_find(__u16 port){
+struct wellkn_port_entry *  wellkn_port_find(__u16 port)
+{
 	struct wellkn_port_entry *result=NULL;
 	if (ntohs(port)<0||ntohs(port)>65535) {
 		log_warning("The port %d is out of range.",port);
@@ -59,19 +61,21 @@ struct wellkn_port_entry *  wellkn_port_find(__u16 port){
 	spin_lock_bh(&wellkn_port_lock);
 	result = rbtree_find(port, &wkps.tree, compare_port, struct wellkn_port_entry, tree_hook);
 	spin_unlock_bh(&wellkn_port_lock);
-    return result;
+        return result;
 } 
 /*for debug*/
-void wellkn_port_show(void){
+void wellkn_port_show(void)
+{
 	struct rb_node *node;
 	spin_lock_bh(&wellkn_port_lock);
 	printk("the total wellkn_port is %u\n",wkps.count);
-	for (node = rb_first(&wkps.tree); node; node = rb_next(node)){
+	for (node = rb_first(&wkps.tree); node; node = rb_next(node)) {
 			  struct wellkn_port_entry *wkp=rb_entry(node, struct wellkn_port_entry, tree_hook);
 		      printk("port %d,app_proto %s\n", wkp->port,wkp->app_proto);
         }
 	spin_unlock_bh(&wellkn_port_lock);
 }
+
 static int parse_conf(char * conf)
 {
 	char* line=NULL;
@@ -88,46 +92,52 @@ static int parse_conf(char * conf)
 	            continue;
 
     		ptr = strchr(line,DECOLLATER);
-		if(!ptr)
+		if (!ptr)
 		    continue;
+
 		strncpy(app_proto,line,ptr-line);
 	    	strncpy(tmp_port,ptr+1,strlen(ptr+1));
-		if(kstrtou16(tmp_port,10,&port))
+		if (kstrtou16(tmp_port,10,&port))
 			return -EINVAL;
+
 		count_add_proto(app_proto);
 		err=wellkn_port_add(port,app_proto);
-		if(err)
+		if (err)
 			return err;
     	}
 	return err;
 }
 
 
-int wellkn_port_init(void){
-	  int err = -1;
-	  char *confile = NULL;
-	  wkp_entry_cache = kmem_cache_create("appflid_wkp_entries", sizeof(struct wellkn_port_entry),
-			  0, 0, NULL);
-      if (!wkp_entry_cache) {
-	      log_err(ERR_ALLOC_FAILED, "Could not allocate the wellkn_port_entry cache.");
-	      return -ENOMEM;
-	  }
+int wellkn_port_init(void)
+{
+	int err = -1;
+	char *confile = NULL;
+	wkp_entry_cache = kmem_cache_create("appflid_wkp_entries", 
+                                            sizeof(struct wellkn_port_entry),
+                        	            0, 0, NULL);
+ 
+      	if (!wkp_entry_cache) {
+		log_err(ERR_ALLOC_FAILED, "Could not allocate the wellkn_port_entry cache.");
+	        return -ENOMEM;
+	}
 
-	  wkps.tree = RB_ROOT;
-	  wkps.count = 0;
+	wkps.tree = RB_ROOT;
+	wkps.count = 0;
 	  /*read the config file*/
-	  confile=read_confile(FILENAME);
-	  if(confile){
-	  	err=parse_conf(confile);
-      	kfree(confile);
-	  }
-      return err;
-	  
+	confile=read_confile(FILENAME);
+	if (confile) {
+		err=parse_conf(confile);
+      		kfree(confile);
+	}
+
+	return err;
 }
 static void wellkn_port_destroy_aux(struct rb_node *node)
 {
-	        kmem_cache_free(wkp_entry_cache,rb_entry(node, struct wellkn_port_entry, tree_hook));
+	kmem_cache_free(wkp_entry_cache,rb_entry(node, struct wellkn_port_entry, tree_hook));
 }
+
 void wellkn_port_destroy(void)
 {
 	log_debug("Emptying the wellkn_port_table...");
