@@ -171,12 +171,11 @@ static int aproto_add(struct aproto_node *and)
 	memset(new,0,sizeof(struct aproto_node));
 	memcpy(new->name,and->name,strlen(and->name));
 	new->rgxp = and->rgxp;
-	if (!and->handler || !and->show) {
-		log_err(ERR_NULL,"the handler or show function can not be NULL");
+	if (!and->handler) {
+		log_err(ERR_NULL,"the handler  function can not be NULL");
 		return -EINVAL;
 	}
 	new->handler = and->handler;
-	new->show = and->show;
 	
 
 	spin_lock_bh(&aproto_lock);

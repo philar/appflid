@@ -5,12 +5,13 @@
 #include <linux/list.h>
 #include <net/netfilter/nf_conntrack.h>
 #include "appflid/comm/constants.h"
+#include "appflid/comm/log.h"
+
 struct aproto_node{
 	struct list_head list_hook;
 	char name[APPNAMSIZ];
 	struct regexp *rgxp;
-	int (*handler)(struct nf_conn *ct,const char *l4_data, const unsigned int data_len);
-	void (*show)(const struct nf_conn *ct);
+	int (*handler)(const char *name,const struct tuple *tp ,const char *l4_data, const unsigned int data_len);
 
 };
 struct aproto_node *aproto_find(unsigned char *payload,unsigned int payload_len);

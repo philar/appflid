@@ -2,25 +2,44 @@
 #include <linux/module.h>
 #include <linux/init.h>
 
+#include "appflid/comm/types.h"
+#include "appflid/comm/log.h"
+#include "appflid/comm/proto.h"
 #include "appflid/mod/aproto.h"
+#include "appflid/mod/nl_log.h"
 
 #define FILENAME "qq.conf"
 
 MODULE_LICENSE("GPL");
 
-struct qq_info{
-	unsigned char   version[2];    
-        uint32_t        num;
-};
-
-void qq_show(const struct nf_conn *ct)
+static int qq_send(const char *name,const struct tuple *tp ,struct qq_info *qq )
 {
+	struct log_packet *lp;
+	int err;
+	unsigned int datalen = sizeof(struct log_packet) + sizeof(struct qq_info);
+	
+	lp =  kmalloc(datalen, GFP_ATOMIC);
+        if (!lp) {
+                log_err(ERR_ALLOC_FAILED, "Allocation struct log  failed.");
+                return -ENOMEM;
+        }
 
-	if (ct && ct->appflid.app_private) {
-		printk("version=%02x%02x,num=%d\n",((struct qq_info *)ct->appflid.app_private)->version[0],
-                                           ((struct qq_info *)ct->appflid.app_private)->version[1],
-                                           ntohl(((struct qq_info *)ct->appflid.app_private)->num));
-	}
+	memset(lp,0,datalen);
+	memcpy(lp->name,name,strlen(name));
+	memcpy(&lp->tp,tp,sizeof(*tp));
+	memcpy(lp->app_private,qq,sizeof(struct qq_info));
+	err = nl_log_send_to_user(lp,datalen);
+	kfree(lp);
+	return err;
+		
+}
+
+static void qq_show(const struct qq_info *qq)
+{
+	printk("version=%02x%02x,num=%d\n",qq->version[0],
+                                           qq->version[1],
+                                           ntohl(qq->num));
+
 }
 
 static int qq_header(const char *l4_data)
@@ -33,9 +52,8 @@ static int qq_header(const char *l4_data)
         return -1;
 }
 
-int qq_handle(struct nf_conn *ct,
- 	      const char *l4_data, 
-              const unsigned int data_len)
+int qq_handler(const char *name,const struct tuple *tp,
+ 	      const char *l4_data,const unsigned int data_len)
 {
 	int head = -1;
 	struct qq_info qq;
@@ -61,26 +79,15 @@ int qq_handle(struct nf_conn *ct,
 
 	qq.version[0] = (unsigned char)l4_data[head + 1];
 	qq.version[1] = (unsigned char)l4_data[head + 2];
-	
-	ct->appflid.app_private = kmalloc(sizeof(struct qq_info), GFP_ATOMIC);
-        if (!ct->appflid.app_private) {
-                printk("Allocation ct->appflid.app_private  failed.");
-                return -ENOMEM;
-        }
-	
-	memset(ct->appflid.app_private,0,sizeof(struct qq_info));
-	memcpy(ct->appflid.app_private,&qq,sizeof(struct qq_info));
-/*	printk("version=%02d%02d,num=%d\n",((struct qq_info *)ct->appflid.app_private)->version[0],
-                                           ((struct qq_info *)ct->appflid.app_private)->version[1],
-                                           ((struct qq_info *)ct->appflid.app_private)->num);*/
+        
+        qq_show(&qq);	
 
-	return 0;
+	return  0;/*qq_send(name,tp,&qq);*/
 
 }
 
 struct aproto_node qq = {
-	.handler = qq_handle,
-	.show = qq_show,
+	.handler = qq_handler,
 }; 
 
 static int __init  qq_init(void)

@@ -12,6 +12,7 @@
 #include "appflid/comm/types.h"
 #include "appflid/comm/constants.h"
 #include "appflid/comm/print.h"
+#include "appflid/comm/log.h"
 #include "appflid/mod/config.h"
 #include "appflid/mod/ndinfo.h"
 #include "appflid/mod/wellkn_port.h"
@@ -26,6 +27,8 @@
 static int num_packets = 10;
 static int maxdatalen = 2048;
 static int total_match=0;
+
+static DEFINE_SPINLOCK(appflid_lock);
 
 
 static bool can_handle(const struct sk_buff *skb)
@@ -122,7 +125,6 @@ void nf_ct_appflid_add(struct nf_conn *ct,const char *app_proto)
 		return ;
 	}
 
-	spin_lock_bh(&ct->lock);
 	if(!ct->appflid.app_proto){
 		ct->appflid.app_proto = kmalloc(strlen(app_proto)+1, GFP_ATOMIC);
         	if(!ct->appflid.app_proto&&net_ratelimit()){
@@ -134,17 +136,22 @@ void nf_ct_appflid_add(struct nf_conn *ct,const char *app_proto)
 	strcpy(ct->appflid.app_proto,app_proto);
 	}
 	total_match++;
-	spin_unlock_bh(&ct->lock);
 }
 
 /*for debug*/
-void appflid_print_tuple(struct nf_conn *ct )
+void appflid_print_tuple(struct tuple *tp)
 {
-	printk("%pI4#%hu->%pI4#%hu %hu\n",&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.u3.all,
-         				  ntohs(ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.u.all),
-		                          &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.all,
-					  ntohs(ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.all),
-					  ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.protonum);
+	printk("%pI4#%hu->%pI4#%hu %hu\n",&tp->saddr,ntohs(tp->sport),
+					  &tp->daddr,ntohs(tp->dport),
+					  tp->l4num);
+}
+void appflid_get_tuple(struct nf_conn *ct,struct tuple *tp )
+{
+	memcpy(&tp->saddr,&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.u3.all,sizeof(tp->saddr));
+        memcpy(&tp->sport,&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.u.all,sizeof(tp->sport));
+        memcpy(&tp->daddr,&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.all,sizeof(tp->daddr));
+	memcpy(&tp->dport,&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.all,sizeof(tp->dport));
+	memcpy(&tp->l4num,&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.protonum,sizeof(tp->l4num));
 }
 
 int core(struct sk_buff *skb)
@@ -156,6 +163,7 @@ int core(struct sk_buff *skb)
 	unsigned int appdatalen = 0;
 	struct wellkn_port_entry *wkp;
 	struct aproto_node *and;
+	struct tuple tp;
 
 	/*part 1,preprocess*/
 
@@ -164,13 +172,14 @@ int core(struct sk_buff *skb)
 		goto out;
 	}
 
+	spin_lock_bh(&appflid_lock);
 	if(!(ct = nf_ct_get(skb, &ctinfo)) ||
 		       !(mct = nf_ct_get(skb,&mctinfo))){
 	    	log_info(MODULE_NAME": couldn't get conntrack.");
 		goto out;
 	}
 
-//	appflid_print_tuple(ct);
+//	appflid_print_tuple(&tp);
 
 	while (master_ct(mct) != NULL)
 	        mct = master_ct(mct);
@@ -240,14 +249,17 @@ int core(struct sk_buff *skb)
 	if(and){
 	    printk("dpi success and name=%s\n",and->name);
 	    nf_ct_appflid_add(mct,and->name);
-            and->handler(mct,app_data,appdatalen);/*need complete payload*/
-	    and->show(mct);
+	    appflid_get_tuple(mct,&tp);
+            if (and->handler(and->name,&tp,app_data,appdatalen) < 0) {/*need complete payload*/
+		log_debug("handler failed");
+	    }
 	}else{
 	    log_debug("dpi failed");
 	}
 
 out:
 //	printk("total_match=%d\n",total_match);
+	spin_unlock_bh(&appflid_lock);
 	return NF_ACCEPT;
 }	
 
