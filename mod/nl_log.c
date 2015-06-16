@@ -10,12 +10,14 @@
 
 struct sock *nl_sk=NULL;
 int pid;
+static DEFINE_MUTEX(my_mutex);
 
 int nl_log_send_to_user(const void* szdata, unsigned int len)
 {
 
         struct sk_buff *skb;
         struct nlmsghdr *nlhdr;
+	int err = -1;
 
         skb = nlmsg_new(NLMSG_ALIGN(len), GFP_ATOMIC);
         if (!skb) {
@@ -37,17 +39,23 @@ int nl_log_send_to_user(const void* szdata, unsigned int len)
 #endif
         NETLINK_CB(skb).dst_group = 0;
 
-        return  netlink_unicast(nl_sk, skb, pid, MSG_DONTWAIT);
+	mutex_lock(&my_mutex);
+        err = netlink_unicast(nl_sk, skb, pid, MSG_DONTWAIT);
+	mutex_unlock(&my_mutex);
+	return err;
         
 }
 EXPORT_SYMBOL(nl_log_send_to_user);
 
 /*just get pid from user program*/
 static void nl_log_recv_msg(struct sk_buff *skb){
-	struct nlmsghdr *nlh;
-	nlh=(struct nlmsghdr *)skb->data;
-	pid=nlh->nlmsg_pid;
-        
+       struct nlmsghdr *nlh;
+       nlh=(struct nlmsghdr *)skb->data;
+       if (nlh->nlmsg_type != MSG_CONF) {
+                log_debug("Expecting %#x but got %#x.", MSG_CONF, nlh->nlmsg_type);
+                return ;
+       }
+       pid=nlh->nlmsg_pid;
 }
 
 int nl_log_init(void){
