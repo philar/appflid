@@ -42,7 +42,7 @@ int qq_handler(const char *name,const struct tuple *tp,
 {
 	int head = -1;
 	struct qq_info qq;
-	int err;
+	int err = -1;
 
 	printk("hello %s\n",__func__);
 	if ((head = qq_header(l4_data)) < 0) {
@@ -66,7 +66,7 @@ int qq_handler(const char *name,const struct tuple *tp,
 	qq.version.v[0] = (unsigned char)l4_data[head + 1];
 	qq.version.v[1] = (unsigned char)l4_data[head + 2];
         
-        qq_show(&qq);	
+	qq_show(&qq);	
 	appflid_print_tuple(tp);
 	
 	err = qq_send(name,tp,&qq);

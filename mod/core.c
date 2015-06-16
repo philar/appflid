@@ -167,7 +167,7 @@ int core(struct sk_buff *skb)
 	spin_lock_bh(&appflid_lock);
 	if(!(ct = nf_ct_get(skb, &ctinfo)) ||
 		       !(mct = nf_ct_get(skb,&mctinfo))){
-	    	log_info(MODULE_NAME": couldn't get conntrack.");
+    	    	log_debug("%s: couldn't get conntrack.",MODULE_NAME);
 		goto out;
 	}
 

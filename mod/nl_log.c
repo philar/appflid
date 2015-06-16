@@ -36,6 +36,7 @@ typedef struct {
 
 
 static struct sock *nl_sk=NULL;
+static DEFINE_MUTEX(my_mutex);
 //int pid;
 
 
@@ -51,8 +52,9 @@ int nl_log_send_to_user(u_int8_t proto,u_int16_t version,
 
         struct sk_buff *skb;
         struct nlmsghdr *nlhdr;
-	app_info_t *app_info;
-	unsigned int len = rlen + sizeof(app_info_t);
+	    app_info_t *app_info;
+		int err = -1;
+	    unsigned int len = rlen + sizeof(app_info_t);
 
         skb = nlmsg_new(NLMSG_ALIGN(len), GFP_ATOMIC);
         if (!skb) {
@@ -62,30 +64,30 @@ int nl_log_send_to_user(u_int8_t proto,u_int16_t version,
 
         nlhdr=nlmsg_put(skb,0,0,NLMSG_DONE,len,0);  
 	
- 	app_info = kmalloc(len, GFP_ATOMIC); //malloc(sendmsg_size);
+ 	    app_info = kmalloc(len, GFP_ATOMIC); //malloc(sendmsg_size);
                 if (!app_info){
                         log_err(ERR_ALLOC_FAILED ,"Failed to allocate app_info struct data");
                         return -ENOMEM;
         }	
 	
-	memset(app_info,0,len);
-	app_info->proto = proto;
-	app_info->src = src;
-	app_info->dst = dst;
-	app_info->sport = sport;
-	app_info->dport = dport;
-	memcpy(app_info->apptype,name,strlen(name));
+		memset(app_info,0,len);
+		app_info->proto = proto;
+		app_info->src = src;
+		app_info->dst = dst;
+		app_info->sport = sport;
+		app_info->dport = dport;
+		memcpy(app_info->apptype,name,strlen(name));
 
-	if (rlen) {
-		app_info->len = rlen;
-		memcpy(app_info->reserve,reserve,rlen);
-	}
+		if (rlen) {
+			app_info->len = rlen;
+			memcpy(app_info->reserve,reserve,rlen);
+		}
 
-	if (version)
-		app_info->version = version;	
+		if (version)
+			app_info->version = version;	
 	
-	if (app_id)
-		app_info->app_id = app_id;
+		if (app_id)
+			app_info->app_id = app_id;
 
         memcpy(nlmsg_data(nlhdr), app_info, len);
 
@@ -101,7 +103,10 @@ int nl_log_send_to_user(u_int8_t proto,u_int16_t version,
         NETLINK_CB(skb).dst_group = 5; /*multicast number*/
 
 /*        return  netlink_unicast(nl_sk, skb, pid, MSG_DONTWAIT);*/
-	return netlink_broadcast(nl_sk, skb, 0,5, GFP_ATOMIC); 
+		mutex_lock(&my_mutex);
+		err = netlink_broadcast(nl_sk, skb, 0,5, GFP_ATOMIC); 
+		mutex_unlock(&my_mutex);
+		return err;
         
 }
 EXPORT_SYMBOL(nl_log_send_to_user);
