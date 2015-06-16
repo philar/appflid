@@ -94,7 +94,7 @@ static int __init  qq_init(void)
 {
         int err;
         err = register_aproto(&qq,FILENAME);
-        printk("qq_ modules load,app proto name %s\n",qq.name);
+        printk("qq_modules load,app proto name %s\n",qq.name);
         return err;
 }
 
