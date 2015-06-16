@@ -1,6 +1,6 @@
 obj-m += qq.o
 
-KBUILD_EXTRA_SYMBOLS += /home/appflid/mod/Module.symvers
+KBUILD_EXTRA_SYMBOLS += /home/philar/appflid/mod/Module.symvers
 export KBUILD_EXTRA_SYMBOLS
 
 ccflags-y := -I$(src)/../include

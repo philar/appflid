@@ -10,7 +10,7 @@
 #include "appflid/mod/ndinfo.h"
 #include "appflid/mod/count.h"
 
-struct sock *nl_sk=NULL;
+static struct sock *nl_sk=NULL;
 static DEFINE_MUTEX(nl_mtx);
 
 

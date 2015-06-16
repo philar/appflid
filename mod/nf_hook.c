@@ -14,6 +14,7 @@
 #include "appflid/mod/wellkn_port.h"
 #include "appflid/mod/aproto.h"
 #include "appflid/mod/nl_kcmd.h"
+#include "appflid/mod/nl_log.h"
 #include "appflid/mod/config.h"
 
 MODULE_LICENSE("GPL");
@@ -60,6 +61,7 @@ static struct nf_hook_ops appflid_ops[] __read_mostly = {
 	},
 };
 static void deinit(void){
+	nl_log_destroy();
 	nl_kernel_destroy();
 	aproto_destroy();
 	wellkn_port_destroy();
@@ -90,6 +92,10 @@ static int __init appflid_init(void){
 	if (error)
     		goto err_nl_kernel;
 
+	error=nl_log_init();
+	if (error)
+    		goto err_nl_log;
+
 	error=nf_register_hooks(appflid_ops, ARRAY_SIZE(appflid_ops));
 	if (error)
     		goto err_hooks;
@@ -98,6 +104,8 @@ static int __init appflid_init(void){
 	return 0;
 
 err_hooks:
+	nl_log_destroy();
+err_nl_log:
 	nl_kernel_destroy();
 err_nl_kernel:
 	aproto_destroy();
