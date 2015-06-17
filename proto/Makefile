@@ -1,4 +1,5 @@
-obj-m += qq.o
+obj-m += youku.o
+#obj-m += qq.o
 
 KBUILD_EXTRA_SYMBOLS += /home/appflid/mod/Module.symvers
 export KBUILD_EXTRA_SYMBOLS

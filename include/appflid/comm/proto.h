@@ -6,4 +6,8 @@ struct qq_info{
         uint32_t        num;
 };
 
+struct youku_info{
+	uint32_t	cdn_ip;
+};
+
 #endif
