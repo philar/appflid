@@ -12,7 +12,6 @@
 #include "appflid/comm/types.h"
 #include "appflid/comm/constants.h"
 #include "appflid/comm/print.h"
-#include "appflid/comm/log.h"
 #include "appflid/mod/config.h"
 #include "appflid/mod/ndinfo.h"
 #include "appflid/mod/wellkn_port.h"
@@ -138,13 +137,6 @@ void nf_ct_appflid_add(struct nf_conn *ct,const char *app_proto)
 	total_match++;
 }
 
-/*for debug*/
-void appflid_print_tuple(struct tuple *tp)
-{
-	printk("%pI4#%hu->%pI4#%hu %hu\n",&tp->saddr,ntohs(tp->sport),
-					  &tp->daddr,ntohs(tp->dport),
-					  tp->l4num);
-}
 void appflid_get_tuple(struct nf_conn *ct,struct tuple *tp )
 {
 	memcpy(&tp->saddr,&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.u3.all,sizeof(tp->saddr));
@@ -175,7 +167,7 @@ int core(struct sk_buff *skb)
 	spin_lock_bh(&appflid_lock);
 	if(!(ct = nf_ct_get(skb, &ctinfo)) ||
 		       !(mct = nf_ct_get(skb,&mctinfo))){
-	    	log_info(MODULE_NAME": couldn't get conntrack.");
+    	    	log_debug("%s: couldn't get conntrack.",MODULE_NAME);
 		goto out;
 	}
 

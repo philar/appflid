@@ -1,7 +1,6 @@
 #include <linux/ctype.h>
 
 #include "appflid/comm/types.h"
-#include "appflid/comm/print.h"
 #include "appflid/mod/regexp.h"
 #include "appflid/mod/aproto.h"
 #include "appflid/mod/count.h"
@@ -22,7 +21,6 @@ struct aproto_node *aproto_find(unsigned char *payload,unsigned int payload_len)
 	unsigned char *nnpayload;
 	
 //	printk("paylod:");
-//	print_hex(payload,payload_len);
 	nnpayload=(unsigned char *)kmalloc(payload_len+1,GFP_ATOMIC);
 	if(!nnpayload){
 		log_err(ERR_ALLOC_FAILED, "Allocation of nnpayload failed.");

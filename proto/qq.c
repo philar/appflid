@@ -3,7 +3,7 @@
 #include <linux/init.h>
 
 #include "appflid/comm/types.h"
-#include "appflid/comm/log.h"
+#include "appflid/comm/print.h"
 #include "appflid/comm/proto.h"
 #include "appflid/mod/aproto.h"
 #include "appflid/mod/nl_log.h"
@@ -14,30 +14,15 @@ MODULE_LICENSE("GPL");
 
 static int qq_send(const char *name,const struct tuple *tp ,struct qq_info *qq )
 {
-	struct log_packet *lp;
-	int err;
-	unsigned int datalen = sizeof(struct log_packet) + sizeof(struct qq_info);
-	
-	lp =  kmalloc(datalen, GFP_ATOMIC);
-        if (!lp) {
-                log_err(ERR_ALLOC_FAILED, "Allocation struct log  failed.");
-                return -ENOMEM;
-        }
-
-	memset(lp,0,datalen);
-	memcpy(lp->name,name,strlen(name));
-	memcpy(&lp->tp,tp,sizeof(*tp));
-	memcpy(lp->app_private,qq,sizeof(struct qq_info));
-	err = nl_log_send_to_user(lp,datalen);
-	kfree(lp);
-	return err;
+	return  nl_log_send_to_user(tp->l4num,qq->version.all,tp->saddr,tp->daddr,
+                                    tp->sport,tp->dport,name,qq->num,NULL,0);
 		
 }
 
 static void qq_show(const struct qq_info *qq)
 {
-	printk("version=%02x%02x,num=%d\n",qq->version[0],
-                                           qq->version[1],
+	printk("version=%02x%02x,num=%d\n",qq->version.v[0],
+                                           qq->version.v[1],
                                            ntohl(qq->num));
 
 }
@@ -57,6 +42,7 @@ int qq_handler(const char *name,const struct tuple *tp,
 {
 	int head = -1;
 	struct qq_info qq;
+	int err = -1;
 
 	printk("hello %s\n",__func__);
 	if ((head = qq_header(l4_data)) < 0) {
@@ -77,12 +63,16 @@ int qq_handler(const char *name,const struct tuple *tp,
         if( ntohl(qq.num) <= 10000)
         	return -1;
 
-	qq.version[0] = (unsigned char)l4_data[head + 1];
-	qq.version[1] = (unsigned char)l4_data[head + 2];
+	qq.version.v[0] = (unsigned char)l4_data[head + 1];
+	qq.version.v[1] = (unsigned char)l4_data[head + 2];
         
-        qq_show(&qq);	
-
-	return  0;/*qq_send(name,tp,&qq);*/
+	qq_show(&qq);	
+	appflid_print_tuple(tp);
+	
+	err = qq_send(name,tp,&qq);
+	if(err <0)
+		log_debug("qq_send to userspace faild");
+	return err;
 
 }
 
