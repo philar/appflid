@@ -7,39 +7,23 @@
 #include "appflid/comm/proto.h"
 #include "appflid/mod/aproto.h"
 #include "appflid/mod/nl_log.h"
+#include "appflid/comm/print.h"
 
 #define FILENAME "youku.conf"
 
 MODULE_LICENSE("GPL");
 
-int youku_send(const char *name, const struct tuple *tp, struct youku_info *yki){
-	struct log_packet *lp = NULL;
-	int err = 0;
-	unsigned int datalen = 0;
-	
-	datalen = sizeof(struct log_packet) + sizeof(struct youku_info);
-	lp =  kmalloc(datalen, GFP_ATOMIC);
-	if (!lp) {
-		log_err(ERR_ALLOC_FAILED, "Allocation struct log  failed.");
-		return -ENOMEM;
-	}
-	
-	memset(lp, 0, datalen);
-	memcpy(lp->name, name, strlen(name));
-	memcpy(&lp->tp, tp, sizeof(struct tuple));
-	memcpy(lp->app_private, yki, sizeof(struct youku_info));
-	
-	err = nl_log_send_to_user(lp, datalen);
-	
-	kfree(lp);
-	return 0;
+static int youku_send(const char *name, const struct tuple *tp, struct youku_info *yki){
+	return nl_log_send_to_user(tp->l4num, 0, tp->saddr, tp->daddr,
+                                    tp->sport, tp->dport, name, yki->cdn_ip, NULL, 0);
 }
 
-int youku_handler(const char *name, const struct tuple *tp,
+static int youku_handler(const char *name, const struct tuple *tp,
 				  const char *l4_data, const unsigned int data_len) {
 	const char *pattern = "GET /youku/";
 	struct youku_info yki;
 	char *p = NULL;
+	int err = -1;
 	
 	printk("hello %s\n",__func__);
 	if(NULL == l4_data || 0 == data_len){
@@ -48,8 +32,15 @@ int youku_handler(const char *name, const struct tuple *tp,
 	if( (p = strstr(l4_data, pattern)) != NULL){
 		yki.cdn_ip = tp->daddr;
 	}
-	printk("youku cdn ip is: %d\n", yki.cdn_ip);
-	
+	appflid_print_tuple(tp);
+	printk("youku cdn ip is: %pI4\n", &yki.cdn_ip);
+
+	err = youku_send(name, tp, &yki);
+	if(err < 0){
+		log_debug("youku_send to userspace faild.");
+		return err;
+	}
+
 	return 0;
 }
 

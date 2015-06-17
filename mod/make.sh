@@ -1,4 +1,4 @@
-rmmod mqq
+rmmod youku
 rmmod qq
 rmmod appflid
 make
