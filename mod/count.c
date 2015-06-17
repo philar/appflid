@@ -69,16 +69,13 @@ static struct app_counter *count_strcmp(const char *app_proto,struct app_counter
 	if(!app_proto)
 		return NULL;
 
-	spin_lock_bh(&count_lock);
 
 	for (i = 0;i < count_index;i++) {
 		if (!strcmp(app_cnt[i].app_proto,app_proto)) {
-			spin_unlock_bh(&count_lock);
 			return &app_cnt[i];
 		}
 	}
 
-	spin_unlock_bh(&count_lock);
 	return NULL;
 }
 
