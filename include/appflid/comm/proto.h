@@ -9,7 +9,7 @@ struct qq_info{
         uint32_t        num;
 };
 
-struct youku_info{
+struct youku_cdn_info{
 	uint32_t	cdn_ip;
 };
 
