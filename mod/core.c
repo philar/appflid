@@ -167,12 +167,12 @@ int core(struct sk_buff *skb)
 
 	/*part 1,preprocess*/
 
+	spin_lock_bh(&appflid_lock);
 	if(!can_handle(skb)){
 		log_info(MODULE_NAME":this is some protocol I can't handle.");
 		goto out;
 	}
 
-	spin_lock_bh(&appflid_lock);
 	if(!(ct = nf_ct_get(skb, &ctinfo)) ||
 		       !(mct = nf_ct_get(skb,&mctinfo))){
 	    	log_info(MODULE_NAME": couldn't get conntrack.");
