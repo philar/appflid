@@ -9,7 +9,7 @@
 #define RESRCIF_DEF  "eth2"
 
 /*******wellkn_port.c************/
-#define CONFILEDIR_DEF "../conf/"
+#define CONFILEDIR_DEF "/etc/appflid_conf/"
 #define DECOLLATER ':'
 
 /***********ndinfo.c*****************/
