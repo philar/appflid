@@ -16,7 +16,7 @@
 #include "appflid/mod/nl_log.h"
 
 
-#define APPFLID_NETLINK_LOG 19
+#define APPFLID_NETLINK_LOG 31
 #define APP_MAXNLGROUPS 32              /* numer of nlgroups */
 #define  nlgroupnum 1                  /* group number */
 #define MAX_MSGSIZE 1024
