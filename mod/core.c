@@ -37,7 +37,7 @@ static bool can_handle(const struct sk_buff *skb)
         if(ip_hdr(skb)->protocol != IPPROTO_TCP &&
 	               ip_hdr(skb)->protocol != IPPROTO_UDP &&
 	               ip_hdr(skb)->protocol != IPPROTO_ICMP)
-	        return 0;
+	        return false;
 	return true;
 }
 
@@ -159,12 +159,12 @@ int core(struct sk_buff *skb)
 
 	/*part 1,preprocess*/
 
+	spin_lock_bh(&appflid_lock);
 	if(!can_handle(skb)){
 		log_info(MODULE_NAME":this is some protocol I can't handle.");
 		goto out;
 	}
 
-	spin_lock_bh(&appflid_lock);
 	if(!(ct = nf_ct_get(skb, &ctinfo)) ||
 		       !(mct = nf_ct_get(skb,&mctinfo))){
     	    	log_debug("%s: couldn't get conntrack.",MODULE_NAME);

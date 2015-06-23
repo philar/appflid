@@ -30,10 +30,10 @@ static int youku_cdn_handler(const char *name, const struct tuple *tp,
 		return -1;
 	}
 	if( (p = strstr(l4_data, pattern)) != NULL){
-	    //yki.cdn_ip = tp->daddr;
+	    yki.cdn_ip = tp->daddr;
 	
 	    //appflid_print_tuple(tp);
-	    //printk("youku_cdn cdn ip is: %pI4\n", &yki.cdn_ip);
+	    printk("youku_cdn ip is: %pI4\n", &yki.cdn_ip);
 
 	    err = youku_cdn_send(name, tp, &yki);
 	    if(err < 0){

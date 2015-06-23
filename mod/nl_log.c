@@ -16,7 +16,7 @@
 #include "appflid/mod/nl_log.h"
 
 
-#define APPFLID_NETLINK_LOG 31
+#define APPFLID_NETLINK_LOG 19
 #define APP_MAXNLGROUPS 32              /* numer of nlgroups */
 #define  nlgroupnum 1                  /* group number */
 #define MAX_MSGSIZE 1024
@@ -36,7 +36,7 @@ typedef struct {
 
 
 static struct sock *nl_sk=NULL;
-static DEFINE_MUTEX(my_mutex);
+static DEFINE_SPINLOCK(log_lock);
 //int pid;
 
 
@@ -52,9 +52,9 @@ int nl_log_send_to_user(u_int8_t proto,u_int16_t version,
 
         struct sk_buff *skb;
         struct nlmsghdr *nlhdr;
-	    app_info_t *app_info;
-		int err = -1;
-	    unsigned int len = rlen + sizeof(app_info_t);
+        app_info_t *app_info;
+	int err = -1;
+	unsigned int len = rlen + sizeof(app_info_t);
 
         skb = nlmsg_new(NLMSG_ALIGN(len), GFP_ATOMIC);
         if (!skb) {
@@ -103,10 +103,10 @@ int nl_log_send_to_user(u_int8_t proto,u_int16_t version,
         NETLINK_CB(skb).dst_group = 5; /*multicast number*/
 
 /*        return  netlink_unicast(nl_sk, skb, pid, MSG_DONTWAIT);*/
-		mutex_lock(&my_mutex);
-		err = netlink_broadcast(nl_sk, skb, 0,5, GFP_ATOMIC); 
-		mutex_unlock(&my_mutex);
-		return err;
+	spin_lock_bh(&log_lock);
+	err = netlink_broadcast(nl_sk, skb, 0,5, GFP_ATOMIC); 
+	spin_unlock_bh(&log_lock);
+	return err;
         
 }
 EXPORT_SYMBOL(nl_log_send_to_user);

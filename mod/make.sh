@@ -1,4 +1,4 @@
-rmmod youku
+rmmod youku_cdn
 rmmod qq
 rmmod appflid
 make
