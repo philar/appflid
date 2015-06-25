@@ -37,6 +37,7 @@ struct aproto_node *aproto_find(unsigned char *payload,unsigned int payload_len)
 	
 	if(!len){
 		log_debug("the payload is null");
+		kfree(nnpayload);
 		return NULL;
 	}
 
@@ -45,10 +46,12 @@ struct aproto_node *aproto_find(unsigned char *payload,unsigned int payload_len)
 		match=regexec(node->rgxp,nnpayload);
 		if(match){
 			spin_unlock_bh(&aproto_lock);
+			kfree(nnpayload);
 			return node;	
 		}
 	}
 	spin_unlock_bh(&aproto_lock);
+	kfree(nnpayload);
 	log_debug("match aproto fail\n");
 	return NULL;
 }

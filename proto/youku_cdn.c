@@ -25,7 +25,6 @@ static int youku_cdn_handler(const char *name, const struct tuple *tp,
 	char *p = NULL;
 	int err = -1;
 	
-	printk("hello %s\n",__func__);
 	if(NULL == l4_data || 0 == data_len){
 		return -1;
 	}

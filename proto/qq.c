@@ -44,7 +44,6 @@ int qq_handler(const char *name,const struct tuple *tp,
 	struct qq_info qq;
 	int err = -1;
 
-	printk("hello %s\n",__func__);
 	if ((head = qq_header(l4_data)) < 0) {
         	return head;
         }

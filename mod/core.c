@@ -132,7 +132,7 @@ void nf_ct_appflid_add(struct nf_conn *ct,const char *app_proto)
 		}
 
 	memset(ct->appflid.app_proto,0,strlen(app_proto)+1);
-	strcpy(ct->appflid.app_proto,app_proto);
+		strcpy(ct->appflid.app_proto,app_proto);
 	}
 	total_match++;
 }
@@ -198,7 +198,6 @@ int core(struct sk_buff *skb)
 	if(total_acct_packets(mct) == 1 && !mct->appflid.app_data ){
 		wkp = wellkn_port_find(ntohs(mct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.all));
 		if(wkp){
-	    	    printk("find the wkp,port =%d\n",wkp->port);
 		    nf_ct_appflid_add(mct,wkp->app_proto);
 		    goto out;
 		}  

@@ -91,6 +91,8 @@ int nl_log_send_to_user(u_int8_t proto,u_int16_t version,
 
         memcpy(nlmsg_data(nlhdr), app_info, len);
 
+	kfree(app_info);
+
         nlhdr->nlmsg_len = skb->tail;
         nlhdr->nlmsg_pid = 0;
         nlhdr->nlmsg_flags = 0;
