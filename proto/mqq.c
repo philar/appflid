@@ -32,9 +32,8 @@ static int mqq_handler(const char *name, const struct tuple *tp,
 	uint16_t qqlen = 0;
 	int err = -1;
 	char *stop_at = NULL;
-	unsigned char zerobytes[4] = {0x00, 0x00, 0x00, 0x00};
-        int n = 9;
 
+	printk("hello %s\n",__func__);
 
     if(tp->l4num != 6){
         return -1;
@@ -51,6 +50,8 @@ static int mqq_handler(const char *name, const struct tuple *tp,
         return -1;
     }
     /* get qq len */
+    unsigned char zerobytes[4] = {0x00, 0x00, 0x00, 0x00};
+    int n = 9;
     while(n++){
     	if( memcmp(l4_data+n, zerobytes, 4) == 0){
     		break;
@@ -79,7 +80,7 @@ static int mqq_handler(const char *name, const struct tuple *tp,
 	mqq.version.v[1] = (unsigned char)l4_data[8];
 
 	mqq_show(&mqq);
-	appflid_print_tuple(tp);
+	//appflid_print_tuple(tp);
 
 	err = mqq_send(name, tp, &mqq);
 	if(err < 0){

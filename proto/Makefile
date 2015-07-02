@@ -1,6 +1,6 @@
 obj-m += youku_cdn.o
 obj-m += qq.o
-#obj-m += mqq.o
+obj-m += mqq.o
 obj-m += httpqq.o
 
 KBUILD_EXTRA_SYMBOLS += /home/appflid/mod/Module.symvers

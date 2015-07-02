@@ -2,7 +2,7 @@
 #define APPFLID_CONSTANS_H
 
 #include <linux/kernel.h>
-#define	NF_PRI_IP_APPFLID_LAST   INT_MAX 
+#define	NF_PRI_IP_APPFLID_LAST   INT_MAX-1 
 
 /***core.c*************/
 #define USERIF_DEF  "eth3"

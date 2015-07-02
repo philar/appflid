@@ -1,5 +1,7 @@
 rmmod youku_cdn
 rmmod qq
+rmmod mqq
+rmmod httpqq
 rmmod appflid
 make
 make modules_install

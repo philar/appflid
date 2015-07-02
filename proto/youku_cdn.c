@@ -25,6 +25,7 @@ static int youku_cdn_handler(const char *name, const struct tuple *tp,
 	char *p = NULL;
 	int err = -1;
 	
+	//printk("hello %s\n",__func__);
 	if(NULL == l4_data || 0 == data_len){
 		return -1;
 	}
@@ -32,7 +33,7 @@ static int youku_cdn_handler(const char *name, const struct tuple *tp,
 	    yki.cdn_ip = tp->daddr;
 	
 	    //appflid_print_tuple(tp);
-	    printk("youku_cdn ip is: %pI4\n", &yki.cdn_ip);
+	    //printk("youku_cdn ip is: %pI4\n", &yki.cdn_ip);
 
 	    err = youku_cdn_send(name, tp, &yki);
 	    if(err < 0){

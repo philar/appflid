@@ -161,7 +161,7 @@ int core(struct sk_buff *skb)
 
 	spin_lock_bh(&appflid_lock);
 	if(!can_handle(skb)){
-		log_info(MODULE_NAME":this is some protocol I can't handle.");
+		log_debug(MODULE_NAME":this is some protocol I can't handle.");
 		goto out;
 	}
 
@@ -238,7 +238,7 @@ int core(struct sk_buff *skb)
 
 	and = aproto_find(mct->appflid.app_data,mct->appflid.app_data_len);/*DPI */
 	if(and){
-	    printk("dpi success and name=%s\n",and->name);
+	    log_debug("dpi success and name=%s\n",and->name);
 	    nf_ct_appflid_add(mct,and->name);
 	    appflid_get_tuple(mct,&tp);
             if (and->handler(and->name,&tp,app_data,appdatalen) < 0) {/*need complete payload*/

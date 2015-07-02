@@ -20,7 +20,7 @@ static int hqq_send(const char *name, const struct tuple *tp, struct qq_info *hq
 
 static void hqq_show(const struct qq_info *hqq)
 {
-	printk("version=%02x%02x, http qq num=%d\n",	hqq->version.v[0],
+	printk("version=%02x%02x, http qq num=%u\n",	hqq->version.v[0],
                                         			hqq->version.v[1],
                                         			hqq->num);
 }
@@ -29,13 +29,18 @@ static int httpqq_handler(const char *name, const struct tuple *tp,
  		 		   		  const char *l4_data, const unsigned int data_len){
 	struct qq_info hqq;
 	char *patter  = ".qq.com";
-	char *phost   = "host:";
+	//char *phost   = "host:";
 	char *puin    = "uin=";
 	char *pstart  = NULL;
 	char *pend    = NULL;
 	char qq[32]   = "";
 	char *stop_at = NULL;
 	int err       = 0;
+	printk("hello,%s\n",__func__);
+
+	if(tp->l4num != 6){
+		return -1;
+	}
 
 	if(data_len <= 0){
 		return -1;
@@ -68,11 +73,11 @@ static int httpqq_handler(const char *name, const struct tuple *tp,
 		}
 		memcpy(qq, pstart, pend - pstart);		
 		if(strlen(qq) < 5){
-			printk("http qq num error.\n");
+			// printk("http qq num error.\n");
 			return -1;
 		}
 
-		printk("http qq num = %s\n", qq);
+	//	printk("http qq num = %s\n", qq);
 	}
 
 	hqq.num = (uint32_t)simple_strtoul(qq, &stop_at, 0);
@@ -83,7 +88,7 @@ static int httpqq_handler(const char *name, const struct tuple *tp,
 	hqq.version.v[1] = (unsigned char)0;
 
 	hqq_show(&hqq);
-	appflid_print_tuple(tp);
+//	appflid_print_tuple(tp);
 
 	err = hqq_send(name, tp, &hqq);
 	if(err < 0){
