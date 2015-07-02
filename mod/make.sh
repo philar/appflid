@@ -1,3 +1,4 @@
+killall -9 /root/chen/ip_tract_v4/ip_tract
 rmmod youku_cdn
 rmmod qq
 rmmod mqq

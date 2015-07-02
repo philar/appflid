@@ -36,7 +36,7 @@ static int httpqq_handler(const char *name, const struct tuple *tp,
 	char qq[32]   = "";
 	char *stop_at = NULL;
 	int err       = 0;
-	printk("hello,%s\n",__func__);
+//	printk("hello,%s\n",__func__);
 
 	if(tp->l4num != 6){
 		return -1;

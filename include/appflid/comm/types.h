@@ -84,6 +84,7 @@ struct arguments {
  */
 enum argp_flags {
 	    ARGP_ALL = 'A',
+	    ARGP_FLUSH = 'F',
 	    ARGP_COUNT = 'c',
 
 	    ARGP_HTTP = 1000,

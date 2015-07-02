@@ -110,6 +110,15 @@ static void flush_counter(struct app_counter *app_cnt)
 	}
 	spin_unlock_bh(&count_lock);
 }
+
+void flush_inactive(void){
+    flush_counter(inactive);
+}
+
+void flush_active(void){
+    flush_counter(active);
+}
+
 static void show_counter(struct app_counter *app_cnt)
 {
 	int i;
@@ -195,7 +204,7 @@ int count_total(struct net *net,char *buf,size_t buf_len)
 	int i;
 	size_t per_len = 0;
 	
-	flush_counter(active);
+	flush_active();
 	count_active(net);
 
 	memset(buf,0,buf_len);

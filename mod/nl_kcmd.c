@@ -64,7 +64,12 @@ static int nl_rcv_msg(struct sk_buff *skb){
 	case ARGP_ALL:
 		count_total(net,buf,MAX_PAYLOAD);
 		nl_send_to_user(nlh->nlmsg_pid,buf,strlen(buf));
-	break;
+		break;
+	case ARGP_FLUSH:
+		flush_inactive();
+		count_total(net,buf,MAX_PAYLOAD);
+		nl_send_to_user(nlh->nlmsg_pid,buf,strlen(buf));
+		break;
 //	case ARGP_FLUSH:
 //		flush_counter();
 //		show_counter();

@@ -17,6 +17,8 @@ struct app_counter{
 int  count_add_proto(const char *app_proto);
 int  count_remove_proto(const char *app_proto);
 int count_total(struct net *net,char *buf,size_t buf_len);
+void flush_active(void);
+void flush_inactive(void);
 int count_init(void);
 void count_destroy(void);
 #endif

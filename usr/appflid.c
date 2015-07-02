@@ -41,6 +41,7 @@ static struct argp_option options[] =
 {
 	{ NULL, 0, NULL, 0, "options:", 10},
 	{ "A",	ARGP_ALL,	NULL, 0, "show all the count of app ." },
+	{ "F",	ARGP_FLUSH,	NULL, 0, "flush all the count of app ." },
 	{ "count",	ARGP_COUNT,	NULL, 0, "show the count " },
 	{ "http",	ARGP_HTTP,NULL, 0, "show the app http" },
 	{ "dns",	ARGP_DNS,NULL, 0, "show the app dns" },
@@ -59,6 +60,9 @@ static int parse_opt(int key, char *arg, struct argp_state *state)
 	switch (key) {
 	case ARGP_ALL:
 		arguments->key=ARGP_ALL;
+		break;
+	case ARGP_FLUSH:
+		arguments->key=ARGP_FLUSH;
 		break;
 	case ARGP_COUNT:
 		arguments->operation=ARGP_COUNT;

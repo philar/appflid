@@ -65,7 +65,7 @@ int qq_handler(const char *name,const struct tuple *tp,
 	qq.version.v[0] = (unsigned char)l4_data[head + 1];
 	qq.version.v[1] = (unsigned char)l4_data[head + 2];
         
-//	qq_show(&qq);	
+	qq_show(&qq);	
 //	appflid_print_tuple(tp);
 	
 	err = qq_send(name,tp,&qq);
