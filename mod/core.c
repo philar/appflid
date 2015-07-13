@@ -156,7 +156,6 @@ int core(struct sk_buff *skb)
 	struct wellkn_port_entry *wkp;
 	struct aproto_node *and;
 	struct tuple tp;
-
 	/*part 1,preprocess*/
 
 	spin_lock_bh(&appflid_lock);
